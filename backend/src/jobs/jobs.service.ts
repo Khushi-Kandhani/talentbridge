@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { JobPosting, PrismaService, User } from '../prisma/prisma.service';
 import { CreateJobDto } from './dto/create-job.dto';
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  create(dto: CreateJobDto) {
+  async create(dto: CreateJobDto): Promise<JobPosting> {
     return this.prisma.jobPosting.create({
       data: {
         title: dto.title,
@@ -22,11 +22,11 @@ export class JobsService {
     });
   }
 
-  list() {
+  async list(): Promise<(JobPosting & { recruiter: User })[]> {
     return this.prisma.jobPosting.findMany({ include: { recruiter: true } });
   }
 
-  get(id: string) {
+  async get(id: string): Promise<JobPosting | null> {
     return this.prisma.jobPosting.findUnique({ where: { id } });
   }
 }

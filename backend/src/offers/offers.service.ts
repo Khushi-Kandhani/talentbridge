@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Offer, PrismaService } from '../prisma/prisma.service';
 import { CreateOfferDto } from './dto/create-offer.dto';
 
 @Injectable()
 export class OffersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  create(dto: CreateOfferDto) {
+  async create(dto: CreateOfferDto): Promise<Offer> {
     return this.prisma.offer.create({
       data: {
         applicationId: dto.applicationId,
@@ -23,11 +23,11 @@ export class OffersService {
     });
   }
 
-  list() {
+  async list(): Promise<Offer[]> {
     return this.prisma.offer.findMany();
   }
 
-  get(id: string) {
+  async get(id: string): Promise<Offer | null> {
     return this.prisma.offer.findUnique({ where: { id } });
   }
 }

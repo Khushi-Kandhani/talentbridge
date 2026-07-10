@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { Interview, PrismaService } from '../prisma/prisma.service';
 import { CreateInterviewDto } from './dto/create-interview.dto';
 
 @Injectable()
 export class InterviewsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
-  create(dto: CreateInterviewDto) {
+  async create(dto: CreateInterviewDto): Promise<Interview> {
     return this.prisma.interview.create({
       data: {
         applicationId: dto.applicationId,
@@ -20,11 +20,11 @@ export class InterviewsService {
     });
   }
 
-  list() {
+  async list(): Promise<Interview[]> {
     return this.prisma.interview.findMany();
   }
 
-  get(id: string) {
+  async get(id: string): Promise<Interview | null> {
     return this.prisma.interview.findUnique({ where: { id } });
   }
 }
