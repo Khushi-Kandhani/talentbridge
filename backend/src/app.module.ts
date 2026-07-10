@@ -9,6 +9,7 @@ import { ApplicationsModule } from './applications/applications.module';
 import { InterviewsModule } from './interviews/interviews.module';
 import { OffersModule } from './offers/offers.module';
 import { GatewayModule } from './gateway/gateway.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { GatewayModule } from './gateway/gateway.module';
     InterviewsModule,
     OffersModule,
     GatewayModule,
+    AuthModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],
