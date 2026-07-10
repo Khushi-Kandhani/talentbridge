@@ -10,6 +10,7 @@ import { InterviewsModule } from './interviews/interviews.module';
 import { OffersModule } from './offers/offers.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { AuthModule } from './auth/auth.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AuthModule } from './auth/auth.module';
     OffersModule,
     GatewayModule,
     AuthModule,
+    AiModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],
