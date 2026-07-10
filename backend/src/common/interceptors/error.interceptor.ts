@@ -6,7 +6,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 @Injectable()
@@ -15,24 +15,12 @@ export class ErrorInterceptor implements NestInterceptor {
     return next.handle().pipe(
       catchError((error) => {
         const status = error instanceof HttpException ? error.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
-
-        let message = 'Internal server error';
-        if (error instanceof HttpException) {
-          const res = error.getResponse();
-          if (typeof res === 'string') {
-            message = res;
-          } else if (typeof res === 'object' && res !== null && 'message' in res) {
-            const inner = (res as any).message;
-            message = Array.isArray(inner) ? inner[0] : inner;
-          }
-        }
-
-        const response = {
+        const message = error instanceof HttpException ? error.getResponse() : 'Internal server error';
+        return throwError(() => ({
           statusCode: status,
           message,
           timestamp: new Date().toISOString(),
-        };
-        throw new HttpException(response, status);
+        }));
       }),
     );
   }
