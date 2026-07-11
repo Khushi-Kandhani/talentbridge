@@ -2,6 +2,7 @@ import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AiService } from './ai.service';
 import { GenerateJobDescriptionDto } from './dto/generate-job-description.dto';
+import { GenerateInterviewQuestionsDto } from './dto/generate-interview-questions.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -20,5 +21,13 @@ export class AiController {
   @ApiResponse({ status: 201, description: 'Job description generated' })
   generateJobDescription(@Body() dto: GenerateJobDescriptionDto) {
     return this.aiService.generateJobDescription(dto);
+  }
+
+  @Post('generate-interview-questions')
+  @Roles(UserRole.RECRUITER, UserRole.HIRING_MANAGER)
+  @ApiOperation({ summary: 'Generate tailored interview questions using AI (with fallback question bank)' })
+  @ApiResponse({ status: 201, description: 'Interview questions generated' })
+  generateInterviewQuestions(@Body() dto: GenerateInterviewQuestionsDto) {
+    return this.aiService.generateInterviewQuestions(dto);
   }
 }
