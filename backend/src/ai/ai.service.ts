@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { GenerateJobDescriptionDto } from './dto/generate-job-description.dto';
 import { ScreenCvDto } from './dto/screen-cv.dto';
+import { GenerateInterviewQuestionsDto } from './dto/generate-interview-questions.dto';
+import { INTERVIEW_QUESTION_FALLBACKS } from './constants/interview-question-fallbacks';
 
 export type JobDescriptionResult = {
   roleSummary: string;
@@ -9,6 +11,11 @@ export type JobDescriptionResult = {
   requiredQualifications: string[];
   preferredQualifications: string[];
   whatWeOffer: string[];
+  source: 'ai' | 'fallback';
+};
+
+export type InterviewQuestionsResult = {
+  questions: { question: string; listenFor: string }[];
   source: 'ai' | 'fallback';
 };
 
@@ -82,6 +89,72 @@ Use inclusive, gender-neutral language throughout. Return ONLY the JSON object.`
     } catch (error) {
       this.logger.error(`Gemini call failed, falling back to template: ${error}`);
       return this.fallbackTemplate(dto);
+    }
+  }
+
+  private buildInterviewQuestionsPrompt(dto: GenerateInterviewQuestionsDto): string {
+    return `You are an expert interviewer preparing a hiring manager for a ${dto.interviewType} interview. Based on the job description and candidate summary below, generate 8 to 10 tailored interview questions as strict JSON with this exact shape and nothing else (no markdown, no code fences):
+
+{
+  "questions": [
+    { "question": "string", "listenFor": "string, one sentence on what a strong answer demonstrates" }
+  ]
+}
+
+Interview type: ${dto.interviewType}
+Job description: ${dto.jobDescription}
+Candidate CV summary: ${dto.candidateCvSummary}
+
+For a "technical" interview, focus on role-specific technical depth calibrated to what is in the CV. For a "behavioural" interview, focus on past behaviour and soft skills relevant to the role. For a "final" interview, focus on culture fit, motivation, and closing questions. Return ONLY the JSON object with 8 to 10 questions.`;
+  }
+
+  private fallbackInterviewQuestions(dto: GenerateInterviewQuestionsDto): InterviewQuestionsResult {
+    return {
+      questions: INTERVIEW_QUESTION_FALLBACKS[dto.interviewType],
+      source: 'fallback',
+    };
+  }
+
+  async generateInterviewQuestions(dto: GenerateInterviewQuestionsDto): Promise<InterviewQuestionsResult> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+
+    if (!apiKey) {
+      this.logger.warn('GEMINI_API_KEY not set — using fallback interview question bank');
+      return this.fallbackInterviewQuestions(dto);
+    }
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await axios.post(
+        url,
+        {
+          contents: [{ parts: [{ text: this.buildInterviewQuestionsPrompt(dto) }] }],
+          generationConfig: { temperature: 0.8, responseMimeType: 'application/json' },
+        },
+        { timeout: 15000 },
+      );
+
+      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('Empty response from Gemini');
+
+      const parsed = JSON.parse(text);
+      const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
+
+      if (questions.length < 3) {
+        throw new Error(`Gemini returned too few questions (${questions.length})`);
+      }
+
+      return {
+        questions: questions.slice(0, 10).map((q: any) => ({
+          question: String(q.question ?? '').trim(),
+          listenFor: String(q.listenFor ?? '').trim(),
+        })),
+        source: 'ai',
+      };
+    } catch (error) {
+      this.logger.error(`Gemini call failed, falling back to question bank: ${error}`);
+      return this.fallbackInterviewQuestions(dto);
     }
   }
 
