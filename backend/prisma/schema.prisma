@@ -101,6 +101,8 @@ model Application {
   candidate User @relation("CandidateApplications", fields: [candidateId], references: [id])
   interview Interview?
   offer Offer?
+
+  @@unique([jobId, candidateId], name: "uniqueCandidateJobApplication")
 }
 
 model Interview {

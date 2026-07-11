@@ -7,6 +7,7 @@ type DashboardShellProps = {
   cardClass: string;
   mutedClass: string;
   accentClass: string;
+  onBrowseJobs?: () => void;
 };
 
 type JobSummary = {
@@ -50,7 +51,7 @@ function stageIndex(stage: string) {
 
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 
-function CandidateDashboard({ darkMode, cardClass, mutedClass, accentClass }: DashboardShellProps) {
+function CandidateDashboard({ darkMode, cardClass, mutedClass, accentClass, onBrowseJobs }: DashboardShellProps) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -167,9 +168,13 @@ function CandidateDashboard({ darkMode, cardClass, mutedClass, accentClass }: Da
 
         {!loading && !loadError && applications.length === 0 && (
           <div className={`mt-8 rounded-xl border p-6 text-sm ${darkMode ? 'border-slate-800 bg-slate-800/50' : 'border-slate-200 bg-slate-50'} ${mutedClass}`}>
-            You haven't applied to any jobs yet, so there's nothing to track here. Job browsing and applying
-            isn't wired up on this part of the app yet — once that's in place, applications you submit will
-            show up here automatically.
+            <p>You haven't applied to any jobs yet, so there's nothing to track here.</p>
+            <button
+              onClick={onBrowseJobs}
+              className="mt-4 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+            >
+              Browse jobs
+            </button>
           </div>
         )}
 
