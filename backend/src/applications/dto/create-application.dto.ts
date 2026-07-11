@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { PipelineStage } from '@prisma/client';
-import { IsArray, IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateApplicationDto {
   @ApiProperty({ example: 'job_123' })
@@ -8,54 +7,28 @@ export class CreateApplicationDto {
   @IsNotEmpty()
   jobId!: string;
 
-  @ApiProperty({ example: 'user_456' })
-  @IsString()
-  @IsNotEmpty()
-  candidateId!: string;
-
-  @ApiProperty({ example: 'Interested in the role' })
+  @ApiProperty({ example: 'Interested in the role', required: false })
   @IsOptional()
   @IsString()
   coverLetter?: string;
 
-  @ApiProperty({ example: 6 })
+  @ApiProperty({ example: 6, required: false })
   @IsOptional()
   @IsInt()
   yearsOfExperience?: number;
 
-  @ApiProperty({ example: '$140k' })
+  @ApiProperty({ example: '$140k', required: false })
   @IsOptional()
   @IsString()
   salaryExpectation?: string;
 
-  @ApiProperty({ example: '2026-07-20' })
+  @ApiProperty({ example: '2026-07-20', required: false })
   @IsOptional()
   @IsDateString()
   availabilityDate?: string;
 
-  @ApiProperty({ example: 'Extracted text from CV' })
+  @ApiProperty({ example: 'Extracted text from CV (usually set later via CV upload)', required: false })
   @IsOptional()
   @IsString()
   cvText?: string;
-
-  @ApiProperty({ example: 87 })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(100)
-  aiScore?: number;
-
-  @ApiProperty({ type: [String], example: ['React', 'TypeScript'] })
-  @IsOptional()
-  @IsArray()
-  aiStrengths?: string[];
-
-  @ApiProperty({ type: [String], example: ['Testing'] })
-  @IsOptional()
-  @IsArray()
-  aiGaps?: string[];
-
-  @ApiProperty({ enum: PipelineStage, example: PipelineStage.APPLIED })
-  @IsEnum(PipelineStage)
-  stage!: PipelineStage;
 }

@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { InterviewStatus } from '@prisma/client';
+import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateInterviewDto {
   @ApiProperty({ example: 'app_123' })
@@ -18,22 +17,8 @@ export class CreateInterviewDto {
   @IsNotEmpty()
   managerId!: string;
 
-  @ApiProperty({ type: [String], example: ['2026-07-10T10:00:00Z'] })
+  @ApiProperty({ type: [String], example: ['2026-07-10T10:00:00Z', '2026-07-11T14:00:00Z'] })
   @IsOptional()
   @IsArray()
   proposedSlots?: string[];
-
-  @ApiProperty({ example: '2026-07-10T10:00:00Z' })
-  @IsOptional()
-  @IsString()
-  confirmedSlot?: string;
-
-  @ApiProperty({ enum: InterviewStatus, example: InterviewStatus.PENDING })
-  @IsEnum(InterviewStatus)
-  status!: InterviewStatus;
-
-  @ApiProperty({ type: [String], example: ['Tell me about yourself'] })
-  @IsOptional()
-  @IsArray()
-  aiQuestions?: string[];
 }

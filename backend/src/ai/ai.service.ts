@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { GenerateJobDescriptionDto } from './dto/generate-job-description.dto';
+import { ScreenCvDto } from './dto/screen-cv.dto';
 
 export type JobDescriptionResult = {
   roleSummary: string;
@@ -82,5 +83,21 @@ Use inclusive, gender-neutral language throughout. Return ONLY the JSON object.`
       this.logger.error(`Gemini call failed, falling back to template: ${error}`);
       return this.fallbackTemplate(dto);
     }
+  }
+
+  async screenCv(dto: ScreenCvDto): Promise<{
+    matchScore: number;
+    strengths: string[];
+    gaps: string[];
+    source: 'ai' | 'fallback';
+  }> {
+    // TODO: replace with real Gemini call, following the same prompt+fallback pattern as generateJobDescription.
+    this.logger.warn('screenCv is a placeholder — CV Scorer AI feature not yet implemented');
+    return {
+      matchScore: 0,
+      strengths: [],
+      gaps: [],
+      source: 'fallback',
+    };
   }
 }

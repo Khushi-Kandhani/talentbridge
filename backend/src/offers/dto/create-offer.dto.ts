@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { OfferCandidateResponse } from '@prisma/client';
-import { IsBoolean, IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateOfferDto {
   @ApiProperty({ example: 'app_123' })
@@ -8,47 +7,28 @@ export class CreateOfferDto {
   @IsNotEmpty()
   applicationId!: string;
 
-  @ApiProperty({ example: 'user_manager' })
-  @IsString()
-  @IsNotEmpty()
-  managerId!: string;
-
   @ApiProperty({ example: 'Senior Product Designer' })
   @IsString()
   @IsNotEmpty()
   roleTitle!: string;
 
-  @ApiProperty({ example: '$150k' })
+  @ApiProperty({ example: '$150k', required: false })
   @IsOptional()
   @IsString()
   salary?: string;
 
-  @ApiProperty({ example: '2026-09-01' })
+  @ApiProperty({ example: '2026-09-01', required: false })
   @IsOptional()
   @IsDateString()
   startDate?: string;
 
-  @ApiProperty({ example: '3 months' })
+  @ApiProperty({ example: '3 months', required: false })
   @IsOptional()
   @IsString()
   probationPeriod?: string;
 
-  @ApiProperty({ example: 'Health, bonus, remote stipend' })
+  @ApiProperty({ example: 'Health, bonus, remote stipend', required: false })
   @IsOptional()
   @IsString()
   benefits?: string;
-
-  @ApiProperty({ enum: OfferCandidateResponse, example: OfferCandidateResponse.NEGOTIATED })
-  @IsOptional()
-  @IsEnum(OfferCandidateResponse)
-  candidateResponse?: OfferCandidateResponse;
-
-  @ApiProperty({ example: 'Counteroffer requested' })
-  @IsOptional()
-  @IsString()
-  counterText?: string;
-
-  @ApiProperty({ example: true })
-  @IsBoolean()
-  isApprovedByRecruiter!: boolean;
 }
