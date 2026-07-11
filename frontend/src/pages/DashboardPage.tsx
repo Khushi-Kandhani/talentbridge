@@ -6,31 +6,22 @@ import {
   BriefcaseBusiness,
   ChevronRight,
   Compass,
-  FileUp,
   LayoutGrid,
   Moon,
   Search,
   Sparkles,
   Sun,
   Users,
-  WandSparkles,
   ShieldCheck,
   BarChart3,
   CalendarDays,
-  CheckCircle2,
-  CircleX,
-  Grip,
-  Trash2,
-  Info,
 } from 'lucide-react';
+import CandidateDashboard from './dashboards/CandidateDashboard';
+import RecruiterDashboard from './dashboards/RecruiterDashboard';
+import HiringManagerDashboard from './dashboards/HiringManagerDashboard';
+import AdminDashboard from './dashboards/AdminDashboard';
 
 type Role = 'candidate' | 'recruiter' | 'hiring-manager' | 'admin';
-
-type Question = {
-  id: number;
-  text: string;
-  category: 'Technical' | 'Behavioral';
-};
 
 type NavItem = {
   id: Role | 'dashboard' | 'jobs' | 'pipeline' | 'analytics';
@@ -39,22 +30,6 @@ type NavItem = {
   active?: boolean;
 };
 
-const candidateStages = [
-  { label: 'Applied', note: 'Application submitted' },
-  { label: 'Screened', note: 'AI CV review in progress' },
-  { label: 'Shortlisted', note: 'Recruiter shortlisted you' },
-  { label: 'Interview', note: 'Interview scheduled' },
-  { label: 'Offer', note: 'Offer delivered' },
-  { label: 'Hired/Rejected', note: 'Decision finalized' },
-];
-
-const initialQuestions: Question[] = [
-  { id: 1, text: 'Describe a time you led a project under ambiguity.', category: 'Behavioral' },
-  { id: 2, text: 'How do you approach debugging a production issue?', category: 'Technical' },
-  { id: 3, text: 'What metrics would you use to evaluate a new feature?', category: 'Behavioral' },
-  { id: 4, text: 'Explain your experience with APIs and integrations.', category: 'Technical' },
-];
-
 const sidebarItems: NavItem[] = [
   { id: 'dashboard', label: 'Overview', icon: LayoutGrid, active: true },
   { id: 'pipeline', label: 'Pipeline', icon: BriefcaseBusiness },
@@ -62,19 +37,30 @@ const sidebarItems: NavItem[] = [
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
-const roleOptions: Role[] = ['candidate', 'recruiter', 'hiring-manager', 'admin'];
-
 function DashboardPage() {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
+  const authRole = useAuthStore((s) => s.role);
+  const [darkMode, setDarkMode] = useState(false);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
-  const [role, setRole] = useState<Role>('recruiter');
-  const [darkMode, setDarkMode] = useState(false);
-  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
-  const [isProcessing, setIsProcessing] = useState(false);
+
+  const role = useMemo<Role>(() => {
+    switch (authRole) {
+      case 'RECRUITER':
+        return 'recruiter';
+      case 'HIRING_MANAGER':
+        return 'hiring-manager';
+      case 'ADMIN':
+        return 'admin';
+      case 'CANDIDATE':
+      default:
+        return 'candidate';
+    }
+  }, [authRole]);
 
   const headerClass = darkMode ? 'bg-slate-900 text-slate-100 border-slate-800' : 'bg-white text-slate-700 border-slate-200';
   const cardClass = darkMode ? 'bg-slate-900/90 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-700';
@@ -94,294 +80,16 @@ function DashboardPage() {
     }
   }, [role]);
 
-  const handleGenerateQuestions = () => {
-    setIsProcessing(true);
-    window.setTimeout(() => {
-      setQuestions((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          text: 'What would make this candidate a strong long-term hire?',
-          category: 'Behavioral',
-        },
-      ]);
-      setIsProcessing(false);
-    }, 900);
-  };
-
-  const handleRemoveQuestion = (id: number) => {
-    setQuestions((prev) => prev.filter((q) => q.id !== id));
-  };
-
   const renderRoleView = () => {
     switch (role) {
       case 'candidate':
-        return (
-          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className={`text-sm font-medium ${accentClass}`}>Application progress</p>
-                  <h2 className="mt-1 text-xl font-semibold">Your hiring journey</h2>
-                </div>
-                <div className={`rounded-full px-3 py-1 text-sm font-medium ${darkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-                  In review
-                </div>
-              </div>
-              <ol className="mt-8 space-y-4">
-                {candidateStages.map((stage, index) => {
-                  const completed = index < 3;
-                  return (
-                    <li key={stage.label} className="flex items-start gap-4">
-                      <div className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full ${completed ? (darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : (darkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500')}`}>
-                        {completed ? <CheckCircle2 size={16} /> : <CircleX size={16} />}
-                      </div>
-                      <div className="flex-1 rounded-xl border border-slate-200/70 p-4 dark:border-slate-800">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold">{stage.label}</h3>
-                          <span className={`text-sm ${mutedClass}`}>{stage.note}</span>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-
-            <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-              <div className="flex items-center gap-2 text-emerald-600">
-                <FileUp size={18} />
-                <h3 className="font-semibold">Upload your CV</h3>
-              </div>
-              <div className={`mt-6 rounded-2xl border-2 border-dashed p-8 text-center ${darkMode ? 'border-slate-700 bg-slate-800/70' : 'border-slate-300 bg-slate-50'}`}>
-                <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${darkMode ? 'bg-slate-800' : 'bg-white'}`}>
-                  <FileUp size={24} className="text-brand-500" />
-                </div>
-                <p className="mt-4 font-semibold">Drag and drop your PDF</p>
-                <p className={`mt-2 text-sm ${mutedClass}`}>Maximum file size 5MB. PDF only.</p>
-                <button className="mt-5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700">
-                  Select file
-                </button>
-              </div>
-              <div className={`mt-6 rounded-2xl border p-4 ${darkMode ? 'border-slate-800 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">AI CV screening</span>
-                  <div className="flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-sm text-brand-700">
-                    <Sparkles size={14} />
-                    <span>Match score 87/100</span>
-                  </div>
-                </div>
-                <p className={`mt-2 text-sm ${mutedClass}`}>Our AI model will assess relevance, seniority, and experience fit.</p>
-              </div>
-            </div>
-          </section>
-        );
-
+        return <CandidateDashboard darkMode={darkMode} cardClass={cardClass} mutedClass={mutedClass} accentClass={accentClass} />;
       case 'recruiter':
-        return (
-          <section className="grid gap-6 2xl:grid-cols-[1.2fr_0.8fr]">
-            <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className={`text-sm font-medium ${accentClass}`}>Pipeline board</p>
-                  <h2 className="mt-1 text-xl font-semibold">Candidate pipeline</h2>
-                </div>
-                <button className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800">
-                  Bulk actions
-                </button>
-              </div>
-              <div className="mt-6 grid gap-4 lg:grid-cols-3">
-                {['Applied', 'Shortlisted', 'Interview'].map((column) => (
-                  <div key={column} className={`rounded-2xl border p-4 ${darkMode ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200 bg-slate-50'}`}>
-                    <div className="mb-4 flex items-center justify-between">
-                      <h3 className="font-semibold">{column}</h3>
-                      <span className={`text-sm ${mutedClass}`}>3</span>
-                    </div>
-                    {['Ava Chen', 'Noah King'].map((name) => (
-                      <div key={name} className={`mb-3 rounded-xl border p-3 ${darkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'}`}>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{name}</span>
-                          <Grip size={16} className={mutedClass} />
-                        </div>
-                        <p className={`mt-2 text-sm ${mutedClass}`}>Senior Product Designer</p>
-                        <div className="mt-3 flex gap-2">
-                          <button className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm text-white">Advance</button>
-                          <button className="rounded-lg border border-rose-200 px-3 py-1.5 text-sm text-rose-600">Reject</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className={`text-sm font-medium ${accentClass}`}>Interview scheduling</p>
-                    <h3 className="mt-1 font-semibold">Calendar overview</h3>
-                  </div>
-                  <CalendarDays size={18} className={accentClass} />
-                </div>
-                <div className={`mt-6 rounded-2xl border p-4 ${darkMode ? 'border-slate-800 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}`}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Today</span>
-                    <span className="text-rose-500">2 conflicts</span>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {['09:30 - Product Analyst', '14:00 - Engineering Lead'].map((slot) => (
-                      <div key={slot} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
-                        <span>{slot}</span>
-                        <span className="text-amber-500">Needs review</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-                <div className="flex items-center gap-2">
-                  <WandSparkles size={18} className={accentClass} />
-                  <h3 className="font-semibold">AI job description generator</h3>
-                </div>
-                <div className="mt-4 space-y-3">
-                  <input className={`w-full rounded-xl border px-3 py-2 outline-none ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`} placeholder="Senior Frontend Engineer" />
-                  <textarea className={`min-h-24 w-full rounded-xl border px-3 py-2 outline-none ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`} placeholder="Describe the role, stack, and ideal candidate profile." />
-                  <button className="w-full rounded-xl bg-brand-600 px-4 py-2 font-semibold text-white">Generate draft</button>
-                </div>
-              </div>
-            </div>
-          </section>
-        );
-
+        return <RecruiterDashboard darkMode={darkMode} cardClass={cardClass} mutedClass={mutedClass} accentClass={accentClass} />;
       case 'hiring-manager':
-        return (
-          <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className={`text-sm font-medium ${accentClass}`}>Candidate profile</p>
-                  <h2 className="mt-1 text-xl font-semibold">Ava Chen</h2>
-                </div>
-                <div className={`rounded-full px-3 py-1 text-sm font-medium ${darkMode ? 'bg-brand-500/15 text-brand-300' : 'bg-brand-50 text-brand-700'}`}>
-                  Senior Product Designer
-                </div>
-              </div>
-              <div className={`mt-6 rounded-2xl border p-4 ${darkMode ? 'border-slate-800 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}`}>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className={`text-sm ${mutedClass}`}>Experience</p>
-                    <p className="mt-1 font-semibold">8 years</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${mutedClass}`}>Location</p>
-                    <p className="mt-1 font-semibold">Remote · UK</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${mutedClass}`}>Skills</p>
-                    <p className="mt-1 font-semibold">Figma, UX Strategy, Leadership</p>
-                  </div>
-                  <div>
-                    <p className={`text-sm ${mutedClass}`}>Resume</p>
-                    <p className="mt-1 font-semibold">CV uploaded · 2.3MB</p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6">
-                <h3 className="font-semibold">Highlights</h3>
-                <ul className={`mt-3 space-y-2 text-sm ${mutedClass}`}>
-                  <li>• Led a cross-functional design system rollout for 4 product teams.</li>
-                  <li>• Reduced onboarding friction by 28% through AI-assisted flows.</li>
-                  <li>• Built scalable research programs across enterprise accounts.</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className={`text-sm font-medium ${accentClass}`}>AI interview suggester</p>
-                  <h2 className="mt-1 text-xl font-semibold">Interview question plan</h2>
-                </div>
-                <button onClick={handleGenerateQuestions} className="rounded-xl bg-brand-600 px-3 py-2 text-sm font-semibold text-white">
-                  Add question
-                </button>
-              </div>
-              <div className="mt-6 space-y-3">
-                {questions.map((question) => (
-                  <div key={question.id} className={`flex items-start justify-between rounded-xl border p-3 ${darkMode ? 'border-slate-800 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}`}>
-                    <div>
-                      <p className="font-medium">{question.text}</p>
-                      <p className={`mt-1 text-sm ${mutedClass}`}>{question.category}</p>
-                    </div>
-                    <button onClick={() => handleRemoveQuestion(question.id)} className="rounded-lg p-2 hover:bg-slate-200 dark:hover:bg-slate-700">
-                      <Trash2 size={16} className="text-rose-500" />
-                    </button>
-                  </div>
-                ))}
-                {isProcessing && (
-                  <div className={`rounded-xl border border-dashed p-4 ${darkMode ? 'border-slate-700 bg-slate-800/70' : 'border-slate-300 bg-slate-50'}`}>
-                    <div className="flex items-center gap-3">
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
-                      <span className="text-sm">Generating a tailored follow-up question...</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        );
-
+        return <HiringManagerDashboard darkMode={darkMode} cardClass={cardClass} mutedClass={mutedClass} accentClass={accentClass} />;
       case 'admin':
-        return (
-          <section className="grid gap-6 lg:grid-cols-2">
-            {[
-              {
-                title: 'Time-to-Hire per role',
-                value: '18 days',
-                hint: 'Faster than last quarter',
-                accent: 'from-brand-500 to-indigo-500',
-              },
-              {
-                title: 'Funnel drop-off rates',
-                value: '24%',
-                hint: 'Screening drop-off',
-                accent: 'from-amber-400 to-orange-500',
-              },
-              {
-                title: 'Offer acceptance rate',
-                value: '82%',
-                hint: 'Strong close rate',
-                accent: 'from-emerald-500 to-teal-500',
-              },
-              {
-                title: 'Source effectiveness',
-                value: '41%',
-                hint: 'Referral lead quality',
-                accent: 'from-violet-500 to-fuchsia-500',
-              },
-            ].map((card) => (
-              <div key={card.title} className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-                <div className={`h-28 rounded-2xl bg-gradient-to-r ${card.accent} p-4`}>
-                  <div className="flex items-center justify-between text-white">
-                    <span className="text-sm font-medium">Live metric</span>
-                    <BarChart3 size={18} />
-                  </div>
-                  <div className="mt-4 text-3xl font-semibold">{card.value}</div>
-                </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <h3 className="font-semibold">{card.title}</h3>
-                  <div className="flex items-center gap-1 text-sm text-slate-500">
-                    <Info size={14} />
-                    <span>{card.hint}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </section>
-        );
-
+        return <AdminDashboard cardClass={cardClass} mutedClass={mutedClass} />;
       default:
         return null;
     }
@@ -460,14 +168,6 @@ function DashboardPage() {
                       Logout
                     </button>
                   </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  {roleOptions.map((option) => (
-                    <button key={option} onClick={() => setRole(option)} className={`rounded-full px-3 py-1.5 text-sm font-medium capitalize transition ${role === option ? 'bg-brand-600 text-white' : (darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600')}`}>
-                      {option.replace('-', ' ')}
-                    </button>
-                  ))}
                 </div>
               </header>
 
