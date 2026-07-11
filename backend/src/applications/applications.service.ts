@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -39,19 +40,28 @@ export class ApplicationsService {
     private readonly gateway: TalentBridgeGateway,
   ) {}
 
-  create(dto: CreateApplicationDto, candidateId: string) {
-    return this.prisma.application.create({
-      data: {
-        jobId: dto.jobId,
-        candidateId,
-        coverLetter: dto.coverLetter,
-        yearsOfExperience: dto.yearsOfExperience,
-        salaryExpectation: dto.salaryExpectation,
-        availabilityDate: dto.availabilityDate,
-        cvText: dto.cvText,
-        stage: PipelineStage.APPLIED,
-      },
-    });
+  async create(dto: CreateApplicationDto, candidateId: string) {
+    try {
+      return await this.prisma.application.create({
+        data: {
+          jobId: dto.jobId,
+          candidateId,
+          coverLetter: dto.coverLetter,
+          yearsOfExperience: dto.yearsOfExperience,
+          salaryExpectation: dto.salaryExpectation,
+          availabilityDate: dto.availabilityDate,
+          cvText: dto.cvText,
+          stage: PipelineStage.APPLIED,
+        },
+      });
+    } catch (error: any) {
+      // Prisma unique-constraint violation (uniqueCandidateJobApplication) — one candidate,
+      // one application per job.
+      if (error?.code === 'P2002') {
+        throw new ConflictException('You have already applied to this job');
+      }
+      throw error;
+    }
   }
 
   /** Recruiters/managers/admins see everything; a candidate only ever sees their own applications. */

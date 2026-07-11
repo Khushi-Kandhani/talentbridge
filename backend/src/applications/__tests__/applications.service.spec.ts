@@ -1,9 +1,53 @@
-import { ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { PipelineStage, UserRole } from '@prisma/client';
 import { ApplicationsService } from '../applications.service';
 
 jest.mock('pdf-parse', () => jest.fn());
 const pdfParseMock = require('pdf-parse') as jest.Mock;
+
+describe('ApplicationsService.create (duplicate-application guard)', () => {
+  it('creates an application normally on first apply', async () => {
+    const prisma: any = {
+      application: {
+        create: jest.fn().mockResolvedValue({ id: 'app1', jobId: 'job1', candidateId: 'cand1', stage: 'APPLIED' }),
+      },
+    };
+    const ai: any = { screenCv: jest.fn() };
+    const gateway: any = { notifyUser: jest.fn() };
+    const service = new ApplicationsService(prisma, ai, gateway);
+
+    const result = await service.create({ jobId: 'job1' } as any, 'cand1');
+
+    expect(result.id).toBe('app1');
+    expect(prisma.application.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws ConflictException when the candidate has already applied to this job (Prisma P2002)', async () => {
+    const prisma: any = {
+      application: {
+        create: jest.fn().mockRejectedValue({ code: 'P2002', meta: { target: ['jobId', 'candidateId'] } }),
+      },
+    };
+    const ai: any = { screenCv: jest.fn() };
+    const gateway: any = { notifyUser: jest.fn() };
+    const service = new ApplicationsService(prisma, ai, gateway);
+
+    await expect(service.create({ jobId: 'job1' } as any, 'cand1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('rethrows non-unique-constraint errors as-is', async () => {
+    const prisma: any = {
+      application: {
+        create: jest.fn().mockRejectedValue(new Error('connection lost')),
+      },
+    };
+    const ai: any = { screenCv: jest.fn() };
+    const gateway: any = { notifyUser: jest.fn() };
+    const service = new ApplicationsService(prisma, ai, gateway);
+
+    await expect(service.create({ jobId: 'job1' } as any, 'cand1')).rejects.toThrow('connection lost');
+  });
+});
 
 describe('ApplicationsService.updateStage (role-guarded pipeline transitions)', () => {
   let prisma: any;

@@ -17,6 +17,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import CandidateDashboard from './dashboards/CandidateDashboard';
+import JobsBrowse from './dashboards/candidate/JobsBrowse';
 import RecruiterDashboard from './dashboards/RecruiterDashboard';
 import HiringManagerDashboard from './dashboards/HiringManagerDashboard';
 import AdminDashboard from './dashboards/AdminDashboard';
@@ -42,6 +43,7 @@ function DashboardPage() {
   const logout = useAuthStore((s) => s.logout);
   const authRole = useAuthStore((s) => s.role);
   const [darkMode, setDarkMode] = useState(false);
+  const [activeView, setActiveView] = useState<'overview' | 'jobs'>('overview');
 
   const handleLogout = () => {
     logout();
@@ -83,7 +85,26 @@ function DashboardPage() {
   const renderRoleView = () => {
     switch (role) {
       case 'candidate':
-        return <CandidateDashboard darkMode={darkMode} cardClass={cardClass} mutedClass={mutedClass} accentClass={accentClass} />;
+        if (activeView === 'jobs') {
+          return (
+            <JobsBrowse
+              darkMode={darkMode}
+              cardClass={cardClass}
+              mutedClass={mutedClass}
+              accentClass={accentClass}
+              onApplied={() => setActiveView('overview')}
+            />
+          );
+        }
+        return (
+          <CandidateDashboard
+            darkMode={darkMode}
+            cardClass={cardClass}
+            mutedClass={mutedClass}
+            accentClass={accentClass}
+            onBrowseJobs={() => setActiveView('jobs')}
+          />
+        );
       case 'recruiter':
         return <RecruiterDashboard darkMode={darkMode} cardClass={cardClass} mutedClass={mutedClass} accentClass={accentClass} />;
       case 'hiring-manager':
@@ -116,8 +137,18 @@ function DashboardPage() {
               <nav className="mt-8 space-y-2">
                 {sidebarItems.map((item) => {
                   const Icon = item.icon;
+                  const isNavigable = item.id === 'dashboard' || item.id === 'jobs';
+                  const isActive = (item.id === 'dashboard' && activeView === 'overview') || (item.id === 'jobs' && activeView === 'jobs');
                   return (
-                    <button key={item.id} className={`flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm font-medium transition ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-white'} ${item.active ? 'bg-brand-600 text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        if (item.id === 'dashboard') setActiveView('overview');
+                        if (item.id === 'jobs') setActiveView('jobs');
+                      }}
+                      disabled={!isNavigable}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm font-medium transition ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-white'} ${isActive ? 'bg-brand-600 text-white' : 'text-slate-600 dark:text-slate-300'} ${!isNavigable ? 'cursor-not-allowed opacity-60' : ''}`}
+                    >
                       <span className="flex items-center gap-3">
                         <Icon size={16} />
                         {item.label}
