@@ -62,6 +62,7 @@ export class ApplicationsService {
 
     return this.prisma.application.findMany({
       where,
+      include: { job: true },
       orderBy: sortByAiScore ? [{ aiScore: 'desc' }] : [{ createdAt: 'desc' }],
     });
   }
