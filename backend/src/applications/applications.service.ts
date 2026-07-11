@@ -111,9 +111,10 @@ export class ApplicationsService {
       updated = await this.prisma.application.update({
         where: { id: applicationId },
         data: {
-          aiScore: screening.matchScore ?? undefined,
+          aiScore: screening.matchScore,
           aiStrengths: screening.strengths,
           aiGaps: screening.gaps,
+          aiExtractedProfile: screening.extraction,
         },
       });
     } catch (error) {
