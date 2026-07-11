@@ -1,6 +1,9 @@
-import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PipelineStage, UserRole } from '@prisma/client';
 import { ApplicationsService } from '../applications.service';
+
+jest.mock('pdf-parse', () => jest.fn());
+const pdfParseMock = require('pdf-parse') as jest.Mock;
 
 describe('ApplicationsService.updateStage (role-guarded pipeline transitions)', () => {
   let prisma: any;
@@ -100,5 +103,138 @@ describe('ApplicationsService.bulkUpdateStage', () => {
 
     expect(results[0]!.application!.stage).toBe(PipelineStage.SCREENED);
     expect(results[1]!.error).toBeDefined(); // a2 is already HIRED (terminal)
+  });
+});
+
+describe('ApplicationsService.uploadCv', () => {
+  const baseApplication = {
+    id: 'app1',
+    candidateId: 'cand1',
+    job: {
+      id: 'job1',
+      title: 'Senior Backend Engineer',
+      responsibilities: 'Build APIs',
+      cultureNotes: 'Fast-paced',
+      requiredSkills: ['NestJS', 'PostgreSQL'],
+    },
+  };
+
+  const makeFile = (overrides: Partial<Express.Multer.File> = {}): Express.Multer.File =>
+    ({
+      mimetype: 'application/pdf',
+      size: 1024,
+      buffer: Buffer.from('fake pdf bytes'),
+      ...overrides,
+    }) as Express.Multer.File;
+
+  beforeEach(() => {
+    pdfParseMock.mockReset();
+  });
+
+  it('extracts CV text, scores it via AI, and persists all four AI fields on success', async () => {
+    const prisma: any = {
+      application: {
+        findUnique: jest.fn().mockResolvedValue(baseApplication),
+        update: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'app1', ...data })),
+      },
+    };
+    const extraction = {
+      name: 'Jane Doe',
+      yearsOfExperience: 6,
+      topSkills: ['NestJS', 'PostgreSQL', 'TypeScript'],
+      educationLevel: "Bachelor's",
+      lastRole: 'Backend Engineer at Acme',
+    };
+    const ai: any = {
+      screenCv: jest.fn().mockResolvedValue({
+        extraction,
+        matchScore: 82,
+        strengths: ['Strong NestJS background', 'Relevant DB experience', 'Good seniority match'],
+        gaps: ['No mentioned Kubernetes experience', 'No leadership experience listed'],
+        source: 'ai',
+      }),
+    };
+    const gateway: any = { notifyUser: jest.fn() };
+    pdfParseMock.mockResolvedValue({ text: 'Jane Doe CV text...' });
+
+    const service = new ApplicationsService(prisma, ai, gateway);
+    const result = await service.uploadCv('app1', 'cand1', makeFile());
+
+    expect(ai.screenCv).toHaveBeenCalledWith({
+      cvText: 'Jane Doe CV text...',
+      jobDescription: 'Senior Backend Engineer\nBuild APIs\nFast-paced',
+      requiredSkills: ['NestJS', 'PostgreSQL'],
+    });
+    expect(prisma.application.update).toHaveBeenCalledTimes(2);
+    expect(result.aiScore).toBe(82);
+    expect(result.aiExtractedProfile).toEqual(extraction);
+    expect(result.aiStrengths).toHaveLength(3);
+    expect(result.aiGaps).toHaveLength(2);
+  });
+
+  it('stores the CV with no AI fields when AI screening fails (spec §4.2 fallback)', async () => {
+    const prisma: any = {
+      application: {
+        findUnique: jest.fn().mockResolvedValue(baseApplication),
+        update: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'app1', ...data })),
+      },
+    };
+    const ai: any = { screenCv: jest.fn().mockRejectedValue(new Error('Gemini timeout')) };
+    const gateway: any = { notifyUser: jest.fn() };
+    pdfParseMock.mockResolvedValue({ text: 'Some CV text' });
+
+    const service = new ApplicationsService(prisma, ai, gateway);
+    const result = await service.uploadCv('app1', 'cand1', makeFile());
+
+    // Only the first update (storing cvText) should have happened — the second,
+    // AI-fields update, is skipped entirely when screenCv throws.
+    expect(prisma.application.update).toHaveBeenCalledTimes(1);
+    expect(result.cvText).toBe('Some CV text');
+    expect(result.aiScore).toBeUndefined();
+  });
+
+  it('rejects a non-PDF file before ever touching prisma or the AI service', async () => {
+    const prisma: any = { application: { findUnique: jest.fn(), update: jest.fn() } };
+    const ai: any = { screenCv: jest.fn() };
+    const gateway: any = { notifyUser: jest.fn() };
+    const service = new ApplicationsService(prisma, ai, gateway);
+
+    await expect(
+      service.uploadCv('app1', 'cand1', makeFile({ mimetype: 'application/msword' })),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.application.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('rejects a file over 5MB', async () => {
+    const prisma: any = { application: { findUnique: jest.fn(), update: jest.fn() } };
+    const ai: any = { screenCv: jest.fn() };
+    const gateway: any = { notifyUser: jest.fn() };
+    const service = new ApplicationsService(prisma, ai, gateway);
+
+    await expect(
+      service.uploadCv('app1', 'cand1', makeFile({ size: 6 * 1024 * 1024 })),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects when the candidate does not own the application', async () => {
+    const prisma: any = {
+      application: { findUnique: jest.fn().mockResolvedValue(baseApplication), update: jest.fn() },
+    };
+    const ai: any = { screenCv: jest.fn() };
+    const gateway: any = { notifyUser: jest.fn() };
+    const service = new ApplicationsService(prisma, ai, gateway);
+
+    await expect(
+      service.uploadCv('app1', 'someone-else', makeFile()),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('throws NotFoundException when the application does not exist', async () => {
+    const prisma: any = { application: { findUnique: jest.fn().mockResolvedValue(null), update: jest.fn() } };
+    const ai: any = { screenCv: jest.fn() };
+    const gateway: any = { notifyUser: jest.fn() };
+    const service = new ApplicationsService(prisma, ai, gateway);
+
+    await expect(service.uploadCv('missing', 'cand1', makeFile())).rejects.toBeInstanceOf(NotFoundException);
   });
 });

@@ -19,6 +19,22 @@ export type InterviewQuestionsResult = {
   source: 'ai' | 'fallback';
 };
 
+export type CvExtraction = {
+  name: string;
+  yearsOfExperience: number | null;
+  topSkills: string[];
+  educationLevel: string;
+  lastRole: string;
+};
+
+export type CvScreeningResult = {
+  extraction: CvExtraction;
+  matchScore: number | null;
+  strengths: string[];
+  gaps: string[];
+  source: 'ai' | 'fallback';
+};
+
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
@@ -158,19 +174,97 @@ For a "technical" interview, focus on role-specific technical depth calibrated t
     }
   }
 
-  async screenCv(dto: ScreenCvDto): Promise<{
-    matchScore: number;
-    strengths: string[];
-    gaps: string[];
-    source: 'ai' | 'fallback';
-  }> {
-    // TODO: replace with real Gemini call, following the same prompt+fallback pattern as generateJobDescription.
-    this.logger.warn('screenCv is a placeholder — CV Scorer AI feature not yet implemented');
+  private buildCvScreeningPrompt(dto: ScreenCvDto): string {
+    return `You are an expert technical recruiter screening a candidate's CV against a job's requirements. Extract structured information from the CV and score the match as strict JSON with this exact shape and nothing else (no markdown, no code fences):
+
+{
+  "extraction": {
+    "name": "string, candidate's full name if present in the CV, otherwise \\"Unknown\\"",
+    "yearsOfExperience": number or null,
+    "topSkills": ["up to 5 strings, the candidate's strongest skills relevant to this job"],
+    "educationLevel": "string, e.g. Bachelor's, Master's, PhD, Bootcamp, Not specified",
+    "lastRole": "string, most recent job title and company if present, otherwise Not specified"
+  },
+  "matchScore": number from 0 to 100,
+  "strengths": ["exactly 3 strings, the candidate's top strengths for this specific role"],
+  "gaps": ["exactly 2 strings, the candidate's top gaps against this specific role"]
+}
+
+Job description: ${dto.jobDescription}
+Required skills: ${dto.requiredSkills.join(', ')}
+
+Candidate CV text:
+${dto.cvText}
+
+Base the score and analysis only on evidence actually present in the CV text — do not invent experience or skills that are not mentioned. Return ONLY the JSON object.`;
+  }
+
+  private fallbackCvScreening(): CvScreeningResult {
     return {
-      matchScore: 0,
+      extraction: {
+        name: 'Unknown',
+        yearsOfExperience: null,
+        topSkills: [],
+        educationLevel: 'Not specified',
+        lastRole: 'Not specified',
+      },
+      matchScore: null,
       strengths: [],
       gaps: [],
       source: 'fallback',
     };
+  }
+
+  async screenCv(dto: ScreenCvDto): Promise<CvScreeningResult> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+
+    if (!apiKey) {
+      this.logger.warn('GEMINI_API_KEY not set — CV stored without AI scoring (spec §4.2 fallback)');
+      return this.fallbackCvScreening();
+    }
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await axios.post(
+        url,
+        {
+          contents: [{ parts: [{ text: this.buildCvScreeningPrompt(dto) }] }],
+          generationConfig: { temperature: 0.3, responseMimeType: 'application/json' },
+        },
+        { timeout: 20000 },
+      );
+
+      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('Empty response from Gemini');
+
+      const parsed = JSON.parse(text);
+      const extraction = parsed.extraction || {};
+      const matchScore = Number(parsed.matchScore);
+
+      if (Number.isNaN(matchScore) || matchScore < 0 || matchScore > 100) {
+        throw new Error(`Gemini returned an invalid matchScore: ${parsed.matchScore}`);
+      }
+
+      return {
+        extraction: {
+          name: String(extraction.name ?? 'Unknown'),
+          yearsOfExperience:
+            extraction.yearsOfExperience === null || extraction.yearsOfExperience === undefined
+              ? null
+              : Number(extraction.yearsOfExperience),
+          topSkills: Array.isArray(extraction.topSkills) ? extraction.topSkills.slice(0, 5) : [],
+          educationLevel: String(extraction.educationLevel ?? 'Not specified'),
+          lastRole: String(extraction.lastRole ?? 'Not specified'),
+        },
+        matchScore: Math.round(matchScore),
+        strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 3) : [],
+        gaps: Array.isArray(parsed.gaps) ? parsed.gaps.slice(0, 2) : [],
+        source: 'ai',
+      };
+    } catch (error) {
+      this.logger.error(`Gemini CV screening failed, falling back to manual review: ${error}`);
+      return this.fallbackCvScreening();
+    }
   }
 }

@@ -92,6 +92,7 @@ model Application {
   aiScore             Int?
   aiStrengths         Json          @default("[]")
   aiGaps              Json          @default("[]")
+  aiExtractedProfile  Json?
   stage               PipelineStage @default(APPLIED)
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
