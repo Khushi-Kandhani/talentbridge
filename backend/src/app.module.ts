@@ -11,6 +11,7 @@ import { OffersModule } from './offers/offers.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { AuthModule } from './auth/auth.module';
 import { AiModule } from './ai/ai.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AiModule } from './ai/ai.module';
     GatewayModule,
     AuthModule,
     AiModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],

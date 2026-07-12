@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import api from '../../lib/api';
 
 type DashboardShellProps = {
   darkMode: boolean;
@@ -24,6 +25,17 @@ const initialQuestions: Question[] = [
 function HiringManagerDashboard({ darkMode, cardClass, mutedClass, accentClass }: DashboardShellProps) {
   const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activity, setActivity] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get('/applications')
+      .then((res) => setActivity(res.data.slice(0, 4)))
+      .catch((err) => setError(err?.response?.data?.message || 'Could not load hiring activity.'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleGenerateQuestions = () => {
     setIsProcessing(true);
@@ -50,38 +62,42 @@ function HiringManagerDashboard({ darkMode, cardClass, mutedClass, accentClass }
         <div className="flex items-center justify-between">
           <div>
             <p className={`text-sm font-medium ${accentClass}`}>Candidate profile</p>
-            <h2 className="mt-1 text-xl font-semibold">Ava Chen</h2>
+            <h2 className="mt-1 text-xl font-semibold">Hiring activity</h2>
           </div>
           <div className={`rounded-full px-3 py-1 text-sm font-medium ${darkMode ? 'bg-brand-500/15 text-brand-300' : 'bg-brand-50 text-brand-700'}`}>
-            Senior Product Designer
+            Live pipeline
           </div>
         </div>
-        <div className={`mt-6 rounded-2xl border p-4 ${darkMode ? 'border-slate-800 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}`}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <p className={`text-sm ${mutedClass}`}>Experience</p>
-              <p className="mt-1 font-semibold">8 years</p>
-            </div>
-            <div>
-              <p className={`text-sm ${mutedClass}`}>Location</p>
-              <p className="mt-1 font-semibold">Remote · UK</p>
-            </div>
-            <div>
-              <p className={`text-sm ${mutedClass}`}>Skills</p>
-              <p className="mt-1 font-semibold">Figma, UX Strategy, Leadership</p>
-            </div>
-            <div>
-              <p className={`text-sm ${mutedClass}`}>Resume</p>
-              <p className="mt-1 font-semibold">CV uploaded · 2.3MB</p>
+        {loading && (
+          <div className={`mt-6 flex items-center gap-2 text-sm ${mutedClass}`}>
+            <Loader2 size={16} className="animate-spin" />
+            Loading activity…
+          </div>
+        )}
+        {error && (
+          <div className="mt-6 flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+            <AlertTriangle size={16} />
+            {error}
+          </div>
+        )}
+        {!loading && !error && (
+          <div className={`mt-6 rounded-2xl border p-4 ${darkMode ? 'border-slate-800 bg-slate-800/60' : 'border-slate-200 bg-slate-50'}`}>
+            <div className="space-y-3">
+              {activity.map((item) => (
+                <div key={item.id} className="rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+                  <div className="font-medium">{item.job?.title || 'Role'}</div>
+                  <div className={`mt-1 ${mutedClass}`}>Stage: {item.stage}</div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
         <div className="mt-6">
           <h3 className="font-semibold">Highlights</h3>
           <ul className={`mt-3 space-y-2 text-sm ${mutedClass}`}>
-            <li>• Led a cross-functional design system rollout for 4 product teams.</li>
-            <li>• Reduced onboarding friction by 28% through AI-assisted flows.</li>
-            <li>• Built scalable research programs across enterprise accounts.</li>
+            <li>• Review the latest candidate activity from the shared pipeline.</li>
+            <li>• Keep interview plans aligned with recruiter updates and offer status.</li>
+            <li>• Use the AI question suggestions to prepare concise, structured interviews.</li>
           </ul>
         </div>
       </div>
