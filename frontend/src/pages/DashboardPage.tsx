@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useSocket } from '../useSocket';
 import {
   Bell,
   BriefcaseBusiness,
@@ -44,6 +45,7 @@ function DashboardPage() {
   const authRole = useAuthStore((s) => s.role);
   const [darkMode, setDarkMode] = useState(false);
   const [activeView, setActiveView] = useState<'overview' | 'jobs'>('overview');
+  const { notifications } = useSocket();
 
   const handleLogout = () => {
     logout();
@@ -83,19 +85,20 @@ function DashboardPage() {
   }, [role]);
 
   const renderRoleView = () => {
+    if (activeView === 'jobs') {
+      return (
+        <JobsBrowse
+          darkMode={darkMode}
+          cardClass={cardClass}
+          mutedClass={mutedClass}
+          accentClass={accentClass}
+          onApplied={() => setActiveView('overview')}
+        />
+      );
+    }
+
     switch (role) {
       case 'candidate':
-        if (activeView === 'jobs') {
-          return (
-            <JobsBrowse
-              darkMode={darkMode}
-              cardClass={cardClass}
-              mutedClass={mutedClass}
-              accentClass={accentClass}
-              onApplied={() => setActiveView('overview')}
-            />
-          );
-        }
         return (
           <CandidateDashboard
             darkMode={darkMode}
@@ -137,7 +140,7 @@ function DashboardPage() {
               <nav className="mt-8 space-y-2">
                 {sidebarItems.map((item) => {
                   const Icon = item.icon;
-                  const isNavigable = item.id === 'dashboard' || item.id === 'jobs';
+                  const isNavigable = item.id === 'dashboard' || item.id === 'jobs' || item.id === 'analytics' || item.id === 'pipeline';
                   const isActive = (item.id === 'dashboard' && activeView === 'overview') || (item.id === 'jobs' && activeView === 'jobs');
                   return (
                     <button
@@ -165,7 +168,7 @@ function DashboardPage() {
                     <Users size={18} />
                   </div>
                   <div>
-                    <p className="font-semibold">Mina Patel</p>
+                    <p className="font-semibold">{authRole ? authRole.toLowerCase().replace(/_/g, ' ') : 'Team member'}</p>
                     <p className={`text-sm ${mutedClass}`}>Operations Lead</p>
                   </div>
                 </div>
@@ -190,7 +193,7 @@ function DashboardPage() {
                     </label>
                     <button className={`relative rounded-xl border p-2 ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
                       <Bell size={18} />
-                      <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-rose-500" />
+                      {notifications.length > 0 && <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-rose-500" />}
                     </button>
                     <button onClick={() => setDarkMode((v) => !v)} className={`rounded-xl border p-2 ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
                       {darkMode ? <Sun size={18} /> : <Moon size={18} />}
