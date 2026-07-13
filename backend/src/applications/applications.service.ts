@@ -51,6 +51,7 @@ export class ApplicationsService {
           salaryExpectation: dto.salaryExpectation,
           availabilityDate: dto.availabilityDate,
           cvText: dto.cvText,
+          source: dto.source,
           stage: PipelineStage.APPLIED,
         },
       });
