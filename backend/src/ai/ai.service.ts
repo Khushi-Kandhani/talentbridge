@@ -3,6 +3,7 @@ import axios from 'axios';
 import { GenerateJobDescriptionDto } from './dto/generate-job-description.dto';
 import { ScreenCvDto } from './dto/screen-cv.dto';
 import { GenerateInterviewQuestionsDto } from './dto/generate-interview-questions.dto';
+import { DraftOfferLetterDto } from './dto/draft-offer-letter.dto';
 import { INTERVIEW_QUESTION_FALLBACKS } from './constants/interview-question-fallbacks';
 
 export type JobDescriptionResult = {
@@ -32,6 +33,11 @@ export type CvScreeningResult = {
   matchScore: number | null;
   strengths: string[];
   gaps: string[];
+  source: 'ai' | 'fallback';
+};
+
+export type OfferLetterResult = {
+  letterText: string;
   source: 'ai' | 'fallback';
 };
 
@@ -265,6 +271,72 @@ Base the score and analysis only on evidence actually present in the CV text —
     } catch (error) {
       this.logger.error(`Gemini CV screening failed, falling back to manual review: ${error}`);
       return this.fallbackCvScreening();
+    }
+  }
+
+  private buildOfferLetterPrompt(dto: DraftOfferLetterDto): string {
+    return `You are an HR specialist drafting a formal, warm, professional offer letter. Write the complete letter as plain text only — no markdown, no JSON, no code fences, no placeholder brackets. It should be ready to paste directly into an email.
+
+Candidate name: ${dto.candidateName}
+Role title: ${dto.roleTitle}
+Company name: ${dto.companyName}
+Salary: ${dto.salary}
+Start date: ${dto.startDate}
+Probation period: ${dto.probationPeriod || 'not applicable — omit any probation clause from the letter'}
+Benefits: ${dto.benefits}
+
+Structure: a warm opening congratulating the candidate on the offer, a paragraph confirming role title/start date/salary, a paragraph summarising benefits, a probation clause only if a probation period was given above, a closing paragraph inviting them to confirm acceptance, and a formal sign-off from the ${dto.companyName} hiring team. Do not invent any detail not provided above. Return ONLY the letter text.`;
+  }
+
+  private fallbackOfferLetter(dto: DraftOfferLetterDto): OfferLetterResult {
+    const probationLine = dto.probationPeriod
+      ? `This offer includes a probationary period of ${dto.probationPeriod}, during which either party may terminate the employment relationship in accordance with your employment contract.\n\n`
+      : '';
+
+    const letterText = `Dear ${dto.candidateName},
+
+We are delighted to offer you the position of ${dto.roleTitle} at ${dto.companyName}.
+
+Your start date will be ${dto.startDate}, with compensation of ${dto.salary}. Your benefits package includes: ${dto.benefits}.
+
+${probationLine}Please confirm your acceptance of this offer by replying to this letter or reaching out to our HR team with any questions. We are excited about the possibility of you joining ${dto.companyName}.
+
+Warm regards,
+The ${dto.companyName} Hiring Team`;
+
+    return { letterText, source: 'fallback' };
+  }
+
+  async draftOfferLetter(dto: DraftOfferLetterDto): Promise<OfferLetterResult> {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+
+    if (!apiKey) {
+      this.logger.warn('GEMINI_API_KEY not set — using fallback offer letter template');
+      return this.fallbackOfferLetter(dto);
+    }
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await axios.post(
+        url,
+        {
+          contents: [{ parts: [{ text: this.buildOfferLetterPrompt(dto) }] }],
+          generationConfig: { temperature: 0.5 },
+        },
+        { timeout: 15000 },
+      );
+
+      const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text || !text.trim()) throw new Error('Empty response from Gemini');
+
+      return {
+        letterText: text.trim(),
+        source: 'ai',
+      };
+    } catch (error) {
+      this.logger.error(`Gemini call failed, falling back to offer letter template: ${error}`);
+      return this.fallbackOfferLetter(dto);
     }
   }
 }
