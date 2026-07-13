@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { BarChart3, Info, Loader2, AlertTriangle } from 'lucide-react';
 import api from '../../lib/api';
+import {
+  HiringStagesBarChart,
+  HiringFunnelChart,
+  SourceEffectivenessPieChart,
+  MetricsRadialChart,
+} from '../../components/analytics/AnalyticsCharts';
 
 type DashboardShellProps = {
   cardClass: string;
@@ -48,19 +54,18 @@ function AdminDashboard({ cardClass, mutedClass }: DashboardShellProps) {
     );
   }
 
-  const cards = [
-    { title: 'Time-to-Hire', value: `${data.metrics.timeToHireDays} days`, hint: 'Average from application to hire', accent: 'from-brand-500 to-indigo-500' },
-    { title: 'Funnel drop-off', value: `${data.metrics.funnelDropoffRate}%`, hint: 'Rejected or stalled stages', accent: 'from-amber-400 to-orange-500' },
-    { title: 'Offer acceptance', value: `${data.metrics.offerAcceptanceRate}%`, hint: 'Candidate response rate', accent: 'from-emerald-500 to-teal-500' },
-    { title: 'Source effectiveness', value: `${data.chartData.sourceEffectiveness[0].value}%`, hint: 'Best channel this period', accent: 'from-violet-500 to-fuchsia-500' },
+  const summaryCards = [
+    { title: 'Total applications', value: data.summary.totalApplications, hint: 'All time', accent: 'from-brand-500 to-indigo-500' },
+    { title: 'Open jobs', value: data.summary.openJobs, hint: 'Currently published', accent: 'from-emerald-500 to-teal-500' },
+    { title: 'Interviews scheduled', value: data.summary.interviewsScheduled, hint: 'Upcoming + confirmed', accent: 'from-violet-500 to-fuchsia-500' },
   ];
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-6 lg:grid-cols-2">
-        {cards.map((card) => (
+      <section className="grid gap-6 md:grid-cols-3">
+        {summaryCards.map((card) => (
           <div key={card.title} className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-            <div className={`h-28 rounded-2xl bg-gradient-to-r ${card.accent} p-4`}>
+            <div className={`h-24 rounded-2xl bg-gradient-to-r ${card.accent} p-4`}>
               <div className="flex items-center justify-between text-white">
                 <span className="text-sm font-medium">Live metric</span>
                 <BarChart3 size={18} />
@@ -79,39 +84,15 @@ function AdminDashboard({ cardClass, mutedClass }: DashboardShellProps) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-          <h3 className="font-semibold">Hiring funnel</h3>
-          <div className="mt-4 space-y-3">
-            {data.chartData.hiringStages.map((stage) => (
-              <div key={stage.name}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span>{stage.name}</span>
-                  <span className={mutedClass}>{stage.value}</span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800">
-                  <div className="h-2 rounded-full bg-brand-600" style={{ width: `${Math.min(100, stage.value * 4)}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className={`rounded-2xl border p-6 shadow-soft ${cardClass}`}>
-          <h3 className="font-semibold">Channel effectiveness</h3>
-          <div className="mt-4 space-y-3">
-            {data.chartData.sourceEffectiveness.map((source) => (
-              <div key={source.name}>
-                <div className="mb-1 flex items-center justify-between text-sm">
-                  <span>{source.name}</span>
-                  <span className={mutedClass}>{source.value}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800">
-                  <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${source.value}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <HiringStagesBarChart data={data.chartData.hiringStages} cardClass={cardClass} />
+        <HiringFunnelChart data={data.chartData.hiringStages} cardClass={cardClass} />
+        <SourceEffectivenessPieChart data={data.chartData.sourceEffectiveness} cardClass={cardClass} />
+        <MetricsRadialChart
+          timeToHireDays={data.metrics.timeToHireDays}
+          funnelDropoffRate={data.metrics.funnelDropoffRate}
+          offerAcceptanceRate={data.metrics.offerAcceptanceRate}
+          cardClass={cardClass}
+        />
       </section>
     </div>
   );
