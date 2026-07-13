@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { AiService } from './ai.service';
 import { GenerateJobDescriptionDto } from './dto/generate-job-description.dto';
 import { GenerateInterviewQuestionsDto } from './dto/generate-interview-questions.dto';
+import { DraftOfferLetterDto } from './dto/draft-offer-letter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -29,5 +30,13 @@ export class AiController {
   @ApiResponse({ status: 201, description: 'Interview questions generated' })
   generateInterviewQuestions(@Body() dto: GenerateInterviewQuestionsDto) {
     return this.aiService.generateInterviewQuestions(dto);
+  }
+
+  @Post('draft-offer-letter')
+  @Roles(UserRole.RECRUITER, UserRole.HIRING_MANAGER)
+  @ApiOperation({ summary: 'Draft an offer letter using AI (with fallback template)' })
+  @ApiResponse({ status: 201, description: 'Offer letter drafted' })
+  draftOfferLetter(@Body() dto: DraftOfferLetterDto) {
+    return this.aiService.draftOfferLetter(dto);
   }
 }
