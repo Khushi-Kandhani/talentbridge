@@ -40,6 +40,7 @@ function JobsBrowse({ darkMode, cardClass, mutedClass, accentClass, onApplied }:
   const [yearsOfExperience, setYearsOfExperience] = useState('');
   const [salaryExpectation, setSalaryExpectation] = useState('');
   const [availabilityDate, setAvailabilityDate] = useState('');
+  const [source, setSource] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -71,6 +72,7 @@ function JobsBrowse({ darkMode, cardClass, mutedClass, accentClass, onApplied }:
     setYearsOfExperience('');
     setSalaryExpectation('');
     setAvailabilityDate('');
+    setSource('');
     setSubmitError(null);
     setSubmitSuccess(false);
   };
@@ -92,6 +94,7 @@ function JobsBrowse({ darkMode, cardClass, mutedClass, accentClass, onApplied }:
         yearsOfExperience: yearsOfExperience ? Number(yearsOfExperience) : undefined,
         salaryExpectation: salaryExpectation || undefined,
         availabilityDate: availabilityDate || undefined,
+        source: source || undefined,
       });
       setSubmitSuccess(true);
       setAppliedJobIds((prev) => new Set(prev).add(selectedJob.id));
@@ -244,6 +247,22 @@ function JobsBrowse({ darkMode, cardClass, mutedClass, accentClass, onApplied }:
                   onChange={(e) => setAvailabilityDate(e.target.value)}
                   className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-700'}`}
                 />
+              </div>
+
+              <div>
+                <label className={`text-sm font-medium ${mutedClass}`}>How did you hear about this role?</label>
+                <select
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                  className={`mt-1 w-full rounded-xl border px-3 py-2 text-sm ${darkMode ? 'border-slate-700 bg-slate-800 text-slate-100' : 'border-slate-200 bg-white text-slate-700'}`}
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="DIRECT">Company website / direct</option>
+                  <option value="REFERRAL">Referral</option>
+                  <option value="JOB_BOARD">Job board</option>
+                  <option value="LINKEDIN">LinkedIn</option>
+                  <option value="OTHER">Other</option>
+                </select>
               </div>
 
               {submitError && (

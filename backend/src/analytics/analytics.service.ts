@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { JobStatus, PipelineStage } from '@prisma/client';
+import { ApplicationSource, JobStatus, PipelineStage } from '@prisma/client';
 
 const STAGE_ORDER: PipelineStage[] = [
   PipelineStage.APPLIED,
@@ -12,12 +12,20 @@ const STAGE_ORDER: PipelineStage[] = [
   PipelineStage.REJECTED,
 ];
 
+const SOURCE_LABELS: Record<ApplicationSource, string> = {
+  [ApplicationSource.DIRECT]: 'Direct application',
+  [ApplicationSource.REFERRAL]: 'Referral',
+  [ApplicationSource.JOB_BOARD]: 'Job board',
+  [ApplicationSource.LINKEDIN]: 'LinkedIn',
+  [ApplicationSource.OTHER]: 'Other',
+};
+
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getOverview() {
-    const [totalApplications, openJobs, interviewsScheduled, allApplications, offers, stageGroups] =
+    const [totalApplications, openJobs, interviewsScheduled, allApplications, offers, stageGroups, sourceGroups] =
       await Promise.all([
         this.prisma.application.count(),
         this.prisma.jobPosting.count({ where: { status: JobStatus.PUBLISHED } }),
@@ -28,6 +36,7 @@ export class AnalyticsService {
         }),
         this.prisma.offer.findMany({ select: { candidateResponse: true } }),
         this.prisma.application.groupBy({ by: ['stage'], _count: { _all: true } }),
+        this.prisma.application.groupBy({ by: ['source'], _count: { _all: true } }),
       ]);
 
     // Time-to-hire: average days between application creation and the
@@ -58,13 +67,17 @@ export class AnalyticsService {
       value: stageGroups.find((g) => g.stage === stage)?._count._all ?? 0,
     }));
 
-    // KNOWN GAP: the schema has no field tracking where a candidate's
-    // application came from (referral / job board / LinkedIn / etc.),
-    // so true "source effectiveness" cannot be computed from real data
-    // yet. Returning a single honest bucket rather than fabricating
-    // channel names. Adding real tracking needs a schema migration
-    // (e.g. Application.source) plus a field on the apply form.
-    const sourceEffectiveness = [{ name: 'Direct application', value: 100 }];
+    // Real source-effectiveness: percentage of total applications per
+    // channel, computed from the Application.source field (backed by the
+    // add_application_source migration + the "How did you hear about this
+    // role?" field on the candidate apply form).
+    const sourceEffectiveness =
+      totalApplications === 0
+        ? []
+        : sourceGroups.map((g) => ({
+            name: SOURCE_LABELS[g.source],
+            value: Math.round((g._count._all / totalApplications) * 100),
+          }));
 
     return {
       summary: { totalApplications, openJobs, interviewsScheduled },
