@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApplicationSource } from '@prisma/client';
 
 export class CreateApplicationDto {
   @ApiProperty({ example: 'job_123' })
@@ -31,4 +32,14 @@ export class CreateApplicationDto {
   @IsOptional()
   @IsString()
   cvText?: string;
+
+  @ApiProperty({
+    enum: ApplicationSource,
+    required: false,
+    example: ApplicationSource.JOB_BOARD,
+    description: 'How the candidate heard about this role. Defaults to DIRECT if omitted.',
+  })
+  @IsOptional()
+  @IsEnum(ApplicationSource)
+  source?: ApplicationSource;
 }

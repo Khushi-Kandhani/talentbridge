@@ -21,8 +21,8 @@ import { BulkUpdateStageDto } from './dto/bulk-update-stage.dto';
  */
 const FORWARD_TRANSITIONS: Partial<Record<PipelineStage, { to: PipelineStage; roles: UserRole[] }>> = {
   APPLIED: { to: PipelineStage.SCREENED, roles: [UserRole.RECRUITER] },
-  SCREENED: { to: PipelineStage.SHORTLISTED, roles: [UserRole.HIRING_MANAGER] },
-  SHORTLISTED: { to: PipelineStage.INTERVIEW_SCHEDULED, roles: [UserRole.RECRUITER, UserRole.HIRING_MANAGER] },
+  SCREENED: { to: PipelineStage.SHORTLISTED, roles: [UserRole.RECRUITER] },
+  SHORTLISTED: { to: PipelineStage.INTERVIEW_SCHEDULED, roles: [UserRole.HIRING_MANAGER] },
   INTERVIEW_SCHEDULED: { to: PipelineStage.OFFER, roles: [UserRole.HIRING_MANAGER] },
   OFFER: { to: PipelineStage.HIRED, roles: [UserRole.HIRING_MANAGER] },
 };
@@ -51,6 +51,7 @@ export class ApplicationsService {
           salaryExpectation: dto.salaryExpectation,
           availabilityDate: dto.availabilityDate,
           cvText: dto.cvText,
+          source: dto.source,
           stage: PipelineStage.APPLIED,
         },
       });
