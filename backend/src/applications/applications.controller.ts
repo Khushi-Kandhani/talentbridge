@@ -21,7 +21,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, PipelineStage } from '@prisma/client';
 
 @ApiTags('applications')
 @ApiBearerAuth()
@@ -45,9 +45,10 @@ export class ApplicationsController {
   list(
     @CurrentUser() user: { userId: string; role: UserRole },
     @Query('jobId') jobId?: string,
+    @Query('status') stage?: PipelineStage,
     @Query('sortBy') sortBy?: string,
   ) {
-    return this.applicationsService.list(user, jobId, sortBy === 'aiScore');
+    return this.applicationsService.list(user, jobId, stage, sortBy === 'aiScore');
   }
 
   @Get(':id')

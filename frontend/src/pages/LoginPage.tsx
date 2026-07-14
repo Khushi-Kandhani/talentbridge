@@ -21,7 +21,9 @@ export default function LoginPage() {
       login(res.data.accessToken, res.data.refreshToken);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Login failed');
+      const raw = err?.response?.data?.message;
+      const msg = typeof raw === 'string' ? raw : raw?.message;
+      setError(msg || 'Login failed');
     } finally {
       setLoading(false);
     }

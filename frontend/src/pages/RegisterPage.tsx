@@ -20,11 +20,13 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.post('/auth/register', { email, password, role });
+      const res = await api.post('/auth/register', { email, password });
       login(res.data.accessToken, res.data.refreshToken);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Registration failed');
+      const raw = err?.response?.data?.message;
+      const msg = typeof raw === 'string' ? raw : raw?.message;
+      setError(msg || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -60,20 +62,6 @@ export default function RegisterPage() {
               className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-brand-500"
               placeholder="At least 8 characters"
             />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-600">Role</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-brand-500"
-            >
-              {['CANDIDATE', 'RECRUITER', 'HIRING_MANAGER', 'ADMIN'].map((r) => (
-                <option key={r} value={r}>
-                  {r.replace('_', ' ')}
-                </option>
-              ))}
-            </select>
           </div>
 
           {error && <p className="text-sm text-rose-600">{error}</p>}
