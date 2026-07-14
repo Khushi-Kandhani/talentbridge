@@ -70,13 +70,14 @@ export default function RegisterPage() {
               onChange={(e) => setRole(e.target.value)}
               className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-brand-500"
             >
-              {roles.map((r) => (
+              {['CANDIDATE', 'RECRUITER', 'HIRING_MANAGER', 'ADMIN'].map((r) => (
                 <option key={r} value={r}>
                   {r.replace('_', ' ')}
                 </option>
               ))}
             </select>
           </div>
+
           {error && <p className="text-sm text-rose-600">{error}</p>}
           <button
             type="submit"
