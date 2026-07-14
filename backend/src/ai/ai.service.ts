@@ -12,12 +12,12 @@ export type JobDescriptionResult = {
   requiredQualifications: string[];
   preferredQualifications: string[];
   whatWeOffer: string[];
-  source: 'ai' | 'fallback';
+  source: 'ai' | 'groq' | 'fallback';
 };
 
 export type InterviewQuestionsResult = {
   questions: { question: string; listenFor: string }[];
-  source: 'ai' | 'fallback';
+  source: 'ai' | 'groq' | 'fallback';
 };
 
 export type CvExtraction = {
@@ -33,17 +33,52 @@ export type CvScreeningResult = {
   matchScore: number | null;
   strengths: string[];
   gaps: string[];
-  source: 'ai' | 'fallback';
+  source: 'ai' | 'groq' | 'fallback';
 };
 
 export type OfferLetterResult = {
   letterText: string;
-  source: 'ai' | 'fallback';
+  source: 'ai' | 'groq' | 'fallback';
 };
 
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
+
+  private async callGroq(
+    prompt: string,
+    options: { temperature?: number; jsonMode?: boolean; timeout?: number } = {},
+  ): Promise<string> {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      throw new Error('GROQ_API_KEY not set');
+    }
+
+    const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+
+    const response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: options.temperature ?? 0.7,
+        ...(options.jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: options.timeout ?? 15000,
+      },
+    );
+
+    const text = response.data?.choices?.[0]?.message?.content;
+    if (!text || !text.trim()) {
+      throw new Error('Empty response from Groq');
+    }
+    return text;
+  }
 
   private buildPrompt(dto: GenerateJobDescriptionDto): string {
     return `You are an expert technical recruiter. Write a complete, bias-aware, gender-neutral job description as strict JSON with this exact shape and nothing else (no markdown, no code fences):
@@ -109,8 +144,22 @@ Use inclusive, gender-neutral language throughout. Return ONLY the JSON object.`
         source: 'ai',
       };
     } catch (error) {
-      this.logger.error(`Gemini call failed, falling back to template: ${error}`);
-      return this.fallbackTemplate(dto);
+      this.logger.error(`Gemini call failed, attempting Groq fallback: ${error}`);
+      try {
+        const text = await this.callGroq(this.buildPrompt(dto), { temperature: 0.7, jsonMode: true });
+        const parsed = JSON.parse(text);
+        return {
+          roleSummary: parsed.roleSummary,
+          responsibilities: parsed.responsibilities || [],
+          requiredQualifications: parsed.requiredQualifications || [],
+          preferredQualifications: parsed.preferredQualifications || [],
+          whatWeOffer: parsed.whatWeOffer || [],
+          source: 'groq',
+        };
+      } catch (groqError) {
+        this.logger.error(`Groq fallback also failed, using static template: ${groqError}`);
+        return this.fallbackTemplate(dto);
+      }
     }
   }
 
@@ -175,8 +224,30 @@ For a "technical" interview, focus on role-specific technical depth calibrated t
         source: 'ai',
       };
     } catch (error) {
-      this.logger.error(`Gemini call failed, falling back to question bank: ${error}`);
-      return this.fallbackInterviewQuestions(dto);
+      this.logger.error(`Gemini call failed, attempting Groq fallback: ${error}`);
+      try {
+        const text = await this.callGroq(this.buildInterviewQuestionsPrompt(dto), {
+          temperature: 0.8,
+          jsonMode: true,
+        });
+        const parsed = JSON.parse(text);
+        const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
+
+        if (questions.length < 3) {
+          throw new Error(`Groq returned too few questions (${questions.length})`);
+        }
+
+        return {
+          questions: questions.slice(0, 10).map((q: any) => ({
+            question: String(q.question ?? '').trim(),
+            listenFor: String(q.listenFor ?? '').trim(),
+          })),
+          source: 'groq',
+        };
+      } catch (groqError) {
+        this.logger.error(`Groq fallback also failed, using question bank: ${groqError}`);
+        return this.fallbackInterviewQuestions(dto);
+      }
     }
   }
 
@@ -221,6 +292,31 @@ Base the score and analysis only on evidence actually present in the CV text —
     };
   }
 
+  private parseCvScreeningResponse(parsed: any): Omit<CvScreeningResult, 'source'> {
+    const extraction = parsed.extraction || {};
+    const matchScore = Number(parsed.matchScore);
+
+    if (Number.isNaN(matchScore) || matchScore < 0 || matchScore > 100) {
+      throw new Error(`Invalid matchScore: ${parsed.matchScore}`);
+    }
+
+    return {
+      extraction: {
+        name: String(extraction.name ?? 'Unknown'),
+        yearsOfExperience:
+          extraction.yearsOfExperience === null || extraction.yearsOfExperience === undefined
+            ? null
+            : Number(extraction.yearsOfExperience),
+        topSkills: Array.isArray(extraction.topSkills) ? extraction.topSkills.slice(0, 5) : [],
+        educationLevel: String(extraction.educationLevel ?? 'Not specified'),
+        lastRole: String(extraction.lastRole ?? 'Not specified'),
+      },
+      matchScore: Math.round(matchScore),
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 3) : [],
+      gaps: Array.isArray(parsed.gaps) ? parsed.gaps.slice(0, 2) : [],
+    };
+  }
+
   async screenCv(dto: ScreenCvDto): Promise<CvScreeningResult> {
     const apiKey = process.env.GEMINI_API_KEY;
     const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
@@ -245,32 +341,21 @@ Base the score and analysis only on evidence actually present in the CV text —
       if (!text) throw new Error('Empty response from Gemini');
 
       const parsed = JSON.parse(text);
-      const extraction = parsed.extraction || {};
-      const matchScore = Number(parsed.matchScore);
-
-      if (Number.isNaN(matchScore) || matchScore < 0 || matchScore > 100) {
-        throw new Error(`Gemini returned an invalid matchScore: ${parsed.matchScore}`);
-      }
-
-      return {
-        extraction: {
-          name: String(extraction.name ?? 'Unknown'),
-          yearsOfExperience:
-            extraction.yearsOfExperience === null || extraction.yearsOfExperience === undefined
-              ? null
-              : Number(extraction.yearsOfExperience),
-          topSkills: Array.isArray(extraction.topSkills) ? extraction.topSkills.slice(0, 5) : [],
-          educationLevel: String(extraction.educationLevel ?? 'Not specified'),
-          lastRole: String(extraction.lastRole ?? 'Not specified'),
-        },
-        matchScore: Math.round(matchScore),
-        strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 3) : [],
-        gaps: Array.isArray(parsed.gaps) ? parsed.gaps.slice(0, 2) : [],
-        source: 'ai',
-      };
+      return { ...this.parseCvScreeningResponse(parsed), source: 'ai' };
     } catch (error) {
-      this.logger.error(`Gemini CV screening failed, falling back to manual review: ${error}`);
-      return this.fallbackCvScreening();
+      this.logger.error(`Gemini CV screening failed, attempting Groq fallback: ${error}`);
+      try {
+        const text = await this.callGroq(this.buildCvScreeningPrompt(dto), {
+          temperature: 0.3,
+          jsonMode: true,
+          timeout: 20000,
+        });
+        const parsed = JSON.parse(text);
+        return { ...this.parseCvScreeningResponse(parsed), source: 'groq' };
+      } catch (groqError) {
+        this.logger.error(`Groq CV screening fallback also failed, using manual review: ${groqError}`);
+        return this.fallbackCvScreening();
+      }
     }
   }
 
@@ -335,8 +420,17 @@ The ${dto.companyName} Hiring Team`;
         source: 'ai',
       };
     } catch (error) {
-      this.logger.error(`Gemini call failed, falling back to offer letter template: ${error}`);
-      return this.fallbackOfferLetter(dto);
+      this.logger.error(`Gemini call failed, attempting Groq fallback: ${error}`);
+      try {
+        const text = await this.callGroq(this.buildOfferLetterPrompt(dto), { temperature: 0.5 });
+        return {
+          letterText: text.trim(),
+          source: 'groq',
+        };
+      } catch (groqError) {
+        this.logger.error(`Groq fallback also failed, using offer letter template: ${groqError}`);
+        return this.fallbackOfferLetter(dto);
+      }
     }
   }
 }
