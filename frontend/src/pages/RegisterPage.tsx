@@ -20,11 +20,13 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.post('/auth/register', { email, password, role });
+      const res = await api.post('/auth/register', { email, password });
       login(res.data.accessToken, res.data.refreshToken);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Registration failed');
+      const raw = err?.response?.data?.message;
+      const msg = typeof raw === 'string' ? raw : raw?.message;
+      setError(msg || 'Registration failed');
     } finally {
       setLoading(false);
     }
