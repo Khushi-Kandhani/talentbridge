@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { useState } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuthStore, UserRole } from '../store/authStore';
 import { useSocket } from '../useSocket';
 import {
   Bell,
@@ -10,41 +10,40 @@ import {
   LayoutGrid,
   Moon,
   Search,
-  Sparkles,
   Sun,
   Users,
   ShieldCheck,
   BarChart3,
-  CalendarDays,
 } from 'lucide-react';
-import CandidateDashboard from './dashboards/CandidateDashboard';
-import JobsBrowse from './dashboards/candidate/JobsBrowse';
-import RecruiterDashboard from './dashboards/RecruiterDashboard';
-import HiringManagerDashboard from './dashboards/HiringManagerDashboard';
-import AdminDashboard from './dashboards/AdminDashboard';
 
-type Role = 'candidate' | 'recruiter' | 'hiring-manager' | 'admin';
-
-type NavItem = {
-  id: Role | 'dashboard' | 'jobs' | 'pipeline' | 'analytics';
-  label: string;
-  icon: typeof LayoutGrid;
-  active?: boolean;
+export type DashboardOutletContext = {
+  darkMode: boolean;
+  cardClass: string;
+  mutedClass: string;
+  accentClass: string;
 };
 
-const sidebarItems: NavItem[] = [
-  { id: 'dashboard', label: 'Overview', icon: LayoutGrid, active: true },
-  { id: 'pipeline', label: 'Pipeline', icon: BriefcaseBusiness },
-  { id: 'jobs', label: 'Jobs', icon: Compass },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+type NavItem = {
+  to: string;
+  end?: boolean;
+  label: string;
+  icon: typeof LayoutGrid;
+  roles: UserRole[];
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { to: '/dashboard', end: true, label: 'Overview', icon: LayoutGrid, roles: ['CANDIDATE', 'RECRUITER', 'HIRING_MANAGER', 'ADMIN'] },
+  { to: '/dashboard/jobs', label: 'Jobs', icon: Compass, roles: ['CANDIDATE', 'RECRUITER', 'ADMIN'] },
+  { to: '/dashboard/pipeline', label: 'Pipeline', icon: BriefcaseBusiness, roles: ['RECRUITER', 'HIRING_MANAGER'] },
+  { to: '/dashboard/analytics', label: 'Analytics', icon: BarChart3, roles: ['ADMIN'] },
+  { to: '/dashboard/users', label: 'Users', icon: Users, roles: ['ADMIN'] },
 ];
 
-function DashboardPage() {
+function DashboardLayout() {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const authRole = useAuthStore((s) => s.role);
   const [darkMode, setDarkMode] = useState(false);
-  const [activeView, setActiveView] = useState<'overview' | 'jobs'>('overview');
   const { notifications } = useSocket();
 
   const handleLogout = () => {
@@ -52,72 +51,28 @@ function DashboardPage() {
     navigate('/login');
   };
 
-  const role = useMemo<Role>(() => {
+  const visibleNavItems = NAV_ITEMS.filter((item) => authRole && item.roles.includes(authRole));
+
+  const roleBadge = (() => {
     switch (authRole) {
       case 'RECRUITER':
-        return 'recruiter';
+        return 'Recruiter';
       case 'HIRING_MANAGER':
-        return 'hiring-manager';
+        return 'Hiring Manager';
       case 'ADMIN':
-        return 'admin';
+        return 'Admin';
       case 'CANDIDATE':
       default:
-        return 'candidate';
+        return 'Candidate';
     }
-  }, [authRole]);
+  })();
 
   const headerClass = darkMode ? 'bg-slate-900 text-slate-100 border-slate-800' : 'bg-white text-slate-700 border-slate-200';
   const cardClass = darkMode ? 'bg-slate-900/90 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-700';
   const mutedClass = darkMode ? 'text-slate-400' : 'text-slate-500';
   const accentClass = darkMode ? 'text-emerald-400' : 'text-emerald-600';
 
-  const roleBadge = useMemo(() => {
-    switch (role) {
-      case 'candidate':
-        return 'Candidate';
-      case 'recruiter':
-        return 'Recruiter';
-      case 'hiring-manager':
-        return 'Hiring Manager';
-      default:
-        return 'Admin';
-    }
-  }, [role]);
-
-  const renderRoleView = () => {
-    if (activeView === 'jobs') {
-      return (
-        <JobsBrowse
-          darkMode={darkMode}
-          cardClass={cardClass}
-          mutedClass={mutedClass}
-          accentClass={accentClass}
-          onApplied={() => setActiveView('overview')}
-        />
-      );
-    }
-
-    switch (role) {
-      case 'candidate':
-        return (
-          <CandidateDashboard
-            darkMode={darkMode}
-            cardClass={cardClass}
-            mutedClass={mutedClass}
-            accentClass={accentClass}
-            onBrowseJobs={() => setActiveView('jobs')}
-          />
-        );
-      case 'recruiter':
-        return <RecruiterDashboard darkMode={darkMode} cardClass={cardClass} mutedClass={mutedClass} accentClass={accentClass} />;
-      case 'hiring-manager':
-        return <HiringManagerDashboard darkMode={darkMode} cardClass={cardClass} mutedClass={mutedClass} accentClass={accentClass} />;
-      case 'admin':
-        return <AdminDashboard cardClass={cardClass} mutedClass={mutedClass} />;
-      default:
-        return null;
-    }
-  };
+  const outletContext: DashboardOutletContext = { darkMode, cardClass, mutedClass, accentClass };
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
@@ -138,26 +93,25 @@ function DashboardPage() {
               </div>
 
               <nav className="mt-8 space-y-2">
-                {sidebarItems.map((item) => {
+                {visibleNavItems.map((item) => {
                   const Icon = item.icon;
-                  const isNavigable = item.id === 'dashboard' || item.id === 'jobs' || item.id === 'analytics' || item.id === 'pipeline';
-                  const isActive = (item.id === 'dashboard' && activeView === 'overview') || (item.id === 'jobs' && activeView === 'jobs');
                   return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        if (item.id === 'dashboard') setActiveView('overview');
-                        if (item.id === 'jobs') setActiveView('jobs');
-                      }}
-                      disabled={!isNavigable}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm font-medium transition ${darkMode ? 'hover:bg-slate-800' : 'hover:bg-white'} ${isActive ? 'bg-brand-600 text-white' : 'text-slate-600 dark:text-slate-300'} ${!isNavigable ? 'cursor-not-allowed opacity-60' : ''}`}
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.end}
+                      className={({ isActive }) =>
+                        `flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
+                          darkMode ? 'hover:bg-slate-800' : 'hover:bg-white'
+                        } ${isActive ? 'bg-brand-600 text-white' : 'text-slate-600 dark:text-slate-300'}`
+                      }
                     >
                       <span className="flex items-center gap-3">
                         <Icon size={16} />
                         {item.label}
                       </span>
                       <ChevronRight size={16} />
-                    </button>
+                    </NavLink>
                   );
                 })}
               </nav>
@@ -205,34 +159,9 @@ function DashboardPage() {
                 </div>
               </header>
 
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <div className={`rounded-2xl border p-4 ${cardClass}`}>
-                  <div className="flex items-center justify-between">
-                    <p className={`text-sm ${mutedClass}`}>Active pipeline</p>
-                    <BriefcaseBusiness size={16} className={accentClass} />
-                  </div>
-                  <p className="mt-3 text-2xl font-semibold">128</p>
-                  <p className={`mt-1 text-sm ${mutedClass}`}>+12% from last week</p>
-                </div>
-                <div className={`rounded-2xl border p-4 ${cardClass}`}>
-                  <div className="flex items-center justify-between">
-                    <p className={`text-sm ${mutedClass}`}>AI screening</p>
-                    <Sparkles size={16} className={accentClass} />
-                  </div>
-                  <p className="mt-3 text-2xl font-semibold">94%</p>
-                  <p className={`mt-1 text-sm ${mutedClass}`}>Auto-match confidence</p>
-                </div>
-                <div className={`rounded-2xl border p-4 ${cardClass}`}>
-                  <div className="flex items-center justify-between">
-                    <p className={`text-sm ${mutedClass}`}>Interview load</p>
-                    <CalendarDays size={16} className={accentClass} />
-                  </div>
-                  <p className="mt-3 text-2xl font-semibold">24</p>
-                  <p className={`mt-1 text-sm ${mutedClass}`}>Upcoming this week</p>
-                </div>
+              <div className="mt-6">
+                <Outlet context={outletContext} />
               </div>
-
-              <div className="mt-6">{renderRoleView()}</div>
             </main>
           </div>
         </div>
@@ -241,4 +170,4 @@ function DashboardPage() {
   );
 }
 
-export default DashboardPage;
+export default DashboardLayout;
