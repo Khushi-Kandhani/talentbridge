@@ -141,11 +141,15 @@ describe('Role-protected routes (integration)', () => {
       .expect(201);
   });
 
-  it('forbids a HIRING_MANAGER from calling CV screening (recruiter/manager both allowed — sanity check the allowed side works)', async () => {
+  it('allows a HIRING_MANAGER to generate interview questions', async () => {
     await request(app.getHttpServer())
-      .post('/ai/screen-cv')
+      .post('/ai/generate-interview-questions')
       .set('Authorization', `Bearer ${tokenFor(UserRole.HIRING_MANAGER)}`)
-      .send({ cvText: 'x', jobDescription: 'y', requiredSkills: ['React'] })
+      .send({ 
+        jobDescription: 'Backend Engineer Node.js TypeScript', 
+        candidateCvSummary: 'Experience with NestJS and database management',
+        interviewType: 'technical'
+      })
       .expect(201);
   });
 

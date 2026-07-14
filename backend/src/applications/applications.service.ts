@@ -66,9 +66,10 @@ export class ApplicationsService {
   }
 
   /** Recruiters/managers/admins see everything; a candidate only ever sees their own applications. */
-  list(requester: { userId: string; role: UserRole }, jobId?: string, sortByAiScore?: boolean) {
+  list(requester: { userId: string; role: UserRole }, jobId?: string, stage?: PipelineStage, sortByAiScore?: boolean) {
     const where: any = {};
     if (jobId) where.jobId = jobId;
+    if (stage) where.stage = stage;
     if (requester.role === UserRole.CANDIDATE) where.candidateId = requester.userId;
 
     return this.prisma.application.findMany({
