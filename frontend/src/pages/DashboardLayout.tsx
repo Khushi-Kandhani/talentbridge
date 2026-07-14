@@ -44,7 +44,8 @@ function DashboardLayout() {
   const logout = useAuthStore((s) => s.logout);
   const authRole = useAuthStore((s) => s.role);
   const [darkMode, setDarkMode] = useState(false);
-  const { notifications } = useSocket();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const { notifications, connectionError } = useSocket();
 
   const handleLogout = () => {
     logout();
@@ -145,10 +146,44 @@ function DashboardLayout() {
                       <Search size={16} className={mutedClass} />
                       <input className={`bg-transparent text-sm outline-none ${darkMode ? 'placeholder:text-slate-500' : 'placeholder:text-slate-400'}`} placeholder="Search candidates" />
                     </label>
-                    <button className={`relative rounded-xl border p-2 ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
-                      <Bell size={18} />
-                      {notifications.length > 0 && <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-rose-500" />}
-                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setNotifOpen((v) => !v)}
+                        className={`relative rounded-xl border p-2 ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}
+                      >
+                        <Bell size={18} />
+                        {!notifOpen && notifications.length > 0 && (
+                          <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-rose-500" />
+                        )}
+                      </button>
+                      {notifOpen && (
+                        <div
+                          className={`absolute right-0 top-full z-10 mt-2 w-72 rounded-xl border p-2 shadow-soft ${
+                            darkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'
+                          }`}
+                        >
+                          {connectionError && (
+                            <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700">
+                              {connectionError}
+                            </div>
+                          )}
+                          {notifications.length === 0 ? (
+                            <p className={`p-2 text-sm ${mutedClass}`}>No notifications yet.</p>
+                          ) : (
+                            <ul className="space-y-1">
+                              {notifications.map((n) => (
+                                <li
+                                  key={n.id}
+                                  className={`rounded-lg px-2 py-2 text-sm ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}
+                                >
+                                  {n.message}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <button onClick={() => setDarkMode((v) => !v)} className={`rounded-xl border p-2 ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-white'}`}>
                       {darkMode ? <Sun size={18} /> : <Moon size={18} />}
                     </button>

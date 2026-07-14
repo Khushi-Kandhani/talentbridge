@@ -22,6 +22,8 @@ describe('UsersController (integration, PrismaService mocked — no live DB requ
       user: {
         create: jest.fn(),
         findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
       },
     };
 
@@ -135,6 +137,62 @@ describe('UsersController (integration, PrismaService mocked — no live DB requ
         .expect(201);
 
       expect(res.body.email).toBe('new@x.com');
+    });
+  });
+
+  describe('PATCH /users/:id/role', () => {
+    it('rejects an unauthenticated request with 401', async () => {
+      await request(app.getHttpServer())
+        .patch('/users/u1/role')
+        .send({ role: UserRole.RECRUITER })
+        .expect(401);
+    });
+
+    it('rejects a non-ADMIN authenticated user with 403', async () => {
+      await request(app.getHttpServer())
+        .patch('/users/u1/role')
+        .set('Authorization', `Bearer ${tokenFor(UserRole.RECRUITER)}`)
+        .send({ role: UserRole.RECRUITER })
+        .expect(403);
+    });
+
+    it('allows an ADMIN to update a role', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@x.com', role: UserRole.CANDIDATE });
+      prisma.user.update.mockResolvedValue({ id: 'u1', email: 'a@x.com', role: UserRole.HIRING_MANAGER });
+
+      const res = await request(app.getHttpServer())
+        .patch('/users/u1/role')
+        .set('Authorization', `Bearer ${tokenFor(UserRole.ADMIN)}`)
+        .send({ role: UserRole.HIRING_MANAGER })
+        .expect(200);
+
+      expect(res.body.role).toBe(UserRole.HIRING_MANAGER);
+    });
+
+    it('returns 404 when the target user does not exist', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await request(app.getHttpServer())
+        .patch('/users/ghost/role')
+        .set('Authorization', `Bearer ${tokenFor(UserRole.ADMIN)}`)
+        .send({ role: UserRole.ADMIN })
+        .expect(404);
+    });
+
+    it('rejects an invalid role value with 400', async () => {
+      await request(app.getHttpServer())
+        .patch('/users/u1/role')
+        .set('Authorization', `Bearer ${tokenFor(UserRole.ADMIN)}`)
+        .send({ role: 'NOT_A_ROLE' })
+        .expect(400);
+    });
+
+    it('rejects an ADMIN attempting to change their own role with 403', async () => {
+      await request(app.getHttpServer())
+        .patch('/users/admin-1/role')
+        .set('Authorization', `Bearer ${tokenFor(UserRole.ADMIN, 'admin-1')}`)
+        .send({ role: UserRole.CANDIDATE })
+        .expect(403);
     });
   });
 });
