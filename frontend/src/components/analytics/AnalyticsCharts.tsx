@@ -60,16 +60,21 @@ export function HiringStagesBarChart({ data, cardClass }: { data: ChartDatum[]; 
   );
 }
 
-/** Chart 2: Funnel chart — same stage data, funnel-shaped visualization of drop-off */
+/** Chart 2: Funnel chart — cumulative "reached this stage or later" counts along
+ * the linear happy path (REJECTED excluded — see backend LINEAR_STAGES comment) */
 export function HiringFunnelChart({ data, cardClass }: { data: ChartDatum[]; cardClass: string }) {
-  const funnelData = data.map((d, i) => ({ ...d, fill: PALETTE[i % PALETTE.length] }));
+  const funnelData = data.map((d, i) => ({
+    ...d,
+    fill: PALETTE[i % PALETTE.length],
+    label: `${d.name} (${d.value})`,
+  }));
   return (
     <ChartShell title="Candidate drop-off funnel" cardClass={cardClass}>
       <ResponsiveContainer width="100%" height="100%">
         <FunnelChart>
           <Tooltip />
           <Funnel dataKey="value" data={funnelData} isAnimationActive>
-            <LabelList dataKey="name" position="right" fill="#334155" stroke="none" fontSize={12} />
+            <LabelList dataKey="label" position="right" fill="#334155" stroke="none" fontSize={12} />
           </Funnel>
         </FunnelChart>
       </ResponsiveContainer>

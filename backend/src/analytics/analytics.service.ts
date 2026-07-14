@@ -12,6 +12,22 @@ const STAGE_ORDER: PipelineStage[] = [
   PipelineStage.REJECTED,
 ];
 
+// Linear happy-path only, REJECTED excluded — used for the cumulative
+// drop-off funnel chart. A funnel requires a single ordered path so
+// each stage's value can be "reached this stage or later"; REJECTED is
+// a terminal branch off this path rather than a point on it, and we
+// don't currently persist which stage a rejected candidate reached
+// before rejection (see funnelDropoffRate for that metric instead).
+// Known limitation, documented rather than silently approximated.
+const LINEAR_STAGES: PipelineStage[] = [
+  PipelineStage.APPLIED,
+  PipelineStage.SCREENED,
+  PipelineStage.SHORTLISTED,
+  PipelineStage.INTERVIEW_SCHEDULED,
+  PipelineStage.OFFER,
+  PipelineStage.HIRED,
+];
+
 const SOURCE_LABELS: Record<ApplicationSource, string> = {
   [ApplicationSource.DIRECT]: 'Direct application',
   [ApplicationSource.REFERRAL]: 'Referral',
@@ -67,6 +83,19 @@ export class AnalyticsService {
       value: stageGroups.find((g) => g.stage === stage)?._count._all ?? 0,
     }));
 
+    // Cumulative funnel data: value = count of applications currently at
+    // this stage or any stage further along the linear path. Computed
+    // right-to-left so each stage picks up everyone ahead of it too.
+    let runningTotal = 0;
+    const funnelData = [...LINEAR_STAGES]
+      .reverse()
+      .map((stage) => {
+        const atThisStage = stageGroups.find((g) => g.stage === stage)?._count._all ?? 0;
+        runningTotal += atThisStage;
+        return { name: stage, value: runningTotal };
+      })
+      .reverse();
+
     // Real source-effectiveness: percentage of total applications per
     // channel, computed from the Application.source field (backed by the
     // add_application_source migration + the "How did you hear about this
@@ -82,7 +111,7 @@ export class AnalyticsService {
     return {
       summary: { totalApplications, openJobs, interviewsScheduled },
       metrics: { timeToHireDays, funnelDropoffRate, offerAcceptanceRate },
-      chartData: { sourceEffectiveness, hiringStages },
+      chartData: { sourceEffectiveness, hiringStages, funnelData },
     };
   }
 }
