@@ -40,3 +40,4 @@ uploads/
 
 # Docker
 *.pid
+*_login.json

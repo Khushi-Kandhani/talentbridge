@@ -85,20 +85,36 @@ describe('ApplicationsService.updateStage (role-guarded pipeline transitions)', 
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('rejects a RECRUITER trying to move SCREENED -> SHORTLISTED (that is the hiring manager\'s job)', async () => {
-    prisma.application.findUnique.mockResolvedValue({ id: 'a1', stage: PipelineStage.SCREENED, candidateId: 'cand1' });
-
-    await expect(
-      service.updateStage('a1', PipelineStage.SHORTLISTED, { userId: 'rec1', role: UserRole.RECRUITER }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('allows a HIRING_MANAGER to move SCREENED -> SHORTLISTED', async () => {
+  it('allows a RECRUITER to move SCREENED -> SHORTLISTED', async () => {
     prisma.application.findUnique.mockResolvedValue({ id: 'a1', stage: PipelineStage.SCREENED, candidateId: 'cand1' });
     prisma.application.update.mockResolvedValue({ id: 'a1', stage: PipelineStage.SHORTLISTED, candidateId: 'cand1' });
 
-    const result = await service.updateStage('a1', PipelineStage.SHORTLISTED, { userId: 'mgr1', role: UserRole.HIRING_MANAGER });
+    const result = await service.updateStage('a1', PipelineStage.SHORTLISTED, { userId: 'rec1', role: UserRole.RECRUITER });
     expect(result.stage).toBe(PipelineStage.SHORTLISTED);
+  });
+
+  it('rejects a HIRING_MANAGER trying to move SCREENED -> SHORTLISTED (that is the recruiter\'s job)', async () => {
+    prisma.application.findUnique.mockResolvedValue({ id: 'a1', stage: PipelineStage.SCREENED, candidateId: 'cand1' });
+
+    await expect(
+      service.updateStage('a1', PipelineStage.SHORTLISTED, { userId: 'mgr1', role: UserRole.HIRING_MANAGER }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects a RECRUITER trying to move SHORTLISTED -> INTERVIEW_SCHEDULED (that is the hiring manager\'s job)', async () => {
+    prisma.application.findUnique.mockResolvedValue({ id: 'a1', stage: PipelineStage.SHORTLISTED, candidateId: 'cand1' });
+
+    await expect(
+      service.updateStage('a1', PipelineStage.INTERVIEW_SCHEDULED, { userId: 'rec1', role: UserRole.RECRUITER }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('allows a HIRING_MANAGER to move SHORTLISTED -> INTERVIEW_SCHEDULED', async () => {
+    prisma.application.findUnique.mockResolvedValue({ id: 'a1', stage: PipelineStage.SHORTLISTED, candidateId: 'cand1' });
+    prisma.application.update.mockResolvedValue({ id: 'a1', stage: PipelineStage.INTERVIEW_SCHEDULED, candidateId: 'cand1' });
+
+    const result = await service.updateStage('a1', PipelineStage.INTERVIEW_SCHEDULED, { userId: 'mgr1', role: UserRole.HIRING_MANAGER });
+    expect(result.stage).toBe(PipelineStage.INTERVIEW_SCHEDULED);
   });
 
   it('rejects skipping a stage (APPLIED -> SHORTLISTED directly)', async () => {

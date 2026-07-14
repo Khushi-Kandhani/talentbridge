@@ -16,7 +16,7 @@ type DashboardShellProps = {
 type AnalyticsOverview = {
   summary: { totalApplications: number; openJobs: number; interviewsScheduled: number };
   metrics: { timeToHireDays: number; funnelDropoffRate: number; offerAcceptanceRate: number };
-  chartData: { sourceEffectiveness: Array<{ name: string; value: number }>; hiringStages: Array<{ name: string; value: number }> };
+  chartData: { sourceEffectiveness: Array<{ name: string; value: number }>; hiringStages: Array<{ name: string; value: number }>; funnelData: Array<{ name: string; value: number }> };
 };
 
 function AdminDashboard({ cardClass, mutedClass }: DashboardShellProps) {
@@ -85,7 +85,7 @@ function AdminDashboard({ cardClass, mutedClass }: DashboardShellProps) {
 
       <section className="grid gap-6 xl:grid-cols-2">
         <HiringStagesBarChart data={data.chartData.hiringStages} cardClass={cardClass} />
-        <HiringFunnelChart data={data.chartData.hiringStages} cardClass={cardClass} />
+        <HiringFunnelChart data={data.chartData.funnelData} cardClass={cardClass} />
         <SourceEffectivenessPieChart data={data.chartData.sourceEffectiveness} cardClass={cardClass} />
         <MetricsRadialChart
           timeToHireDays={data.metrics.timeToHireDays}
