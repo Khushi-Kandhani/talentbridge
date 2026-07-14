@@ -14,7 +14,7 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('overview')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.RECRUITER, UserRole.HIRING_MANAGER, UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin analytics overview: time-to-hire, funnel drop-off, offer acceptance, hiring-stage counts' })
   @ApiResponse({ status: 200, description: 'Analytics overview computed from real application/offer data' })
   getOverview() {
