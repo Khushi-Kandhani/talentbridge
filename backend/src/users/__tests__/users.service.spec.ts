@@ -9,6 +9,8 @@ describe('UsersService', () => {
       user: {
         create: jest.fn(),
         findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
       },
     };
     service = new UsersService(prisma);
@@ -46,6 +48,34 @@ describe('UsersService', () => {
       });
       expect(result[0]).not.toHaveProperty('passwordHash');
       expect(result[0]).not.toHaveProperty('refreshTokenHash');
+    });
+  });
+
+  describe('updateRole', () => {
+    it('updates the role and returns the user without sensitive fields', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@x.com', role: 'CANDIDATE' });
+      prisma.user.update.mockResolvedValue({ id: 'u1', email: 'a@x.com', role: 'RECRUITER', createdAt: new Date(), updatedAt: new Date() });
+
+      const result = await service.updateRole('u1', 'RECRUITER' as any, 'requester-admin-1');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: { role: 'RECRUITER' },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+      expect(result.role).toBe('RECRUITER');
+    });
+
+    it('throws NotFoundException when the user does not exist', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.updateRole('ghost', 'ADMIN' as any, 'requester-admin-1')).rejects.toThrow('User not found');
     });
   });
 });
