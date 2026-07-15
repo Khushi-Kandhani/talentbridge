@@ -1,4 +1,3 @@
-# Docs
 
 This folder contains documentation artifacts for the TalentBridge platform.
 
