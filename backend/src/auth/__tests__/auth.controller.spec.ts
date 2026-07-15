@@ -52,11 +52,11 @@ describe('AuthController (integration, PrismaService mocked — no live DB requi
   describe('POST /auth/register', () => {
     it('registers a new user and returns an access/refresh token pair', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
-      prisma.user.create.mockResolvedValue({ id: 'u1', email: 'new@example.com', role: UserRole.CANDIDATE });
+      prisma.user.create.mockResolvedValue({ id: 'u1', email: 'new@example.com', firstName: 'Jane', lastName: 'Doe', role: UserRole.CANDIDATE });
 
       const res = await request(app.getHttpServer())
         .post('/auth/register')
-        .send({ email: 'new@example.com', password: 'password123', role: UserRole.CANDIDATE })
+        .send({ email: 'new@example.com', password: 'password123', firstName: 'Jane', lastName: 'Doe', role: UserRole.CANDIDATE })
         .expect(201);
 
       expect(res.body.accessToken).toBeDefined();
@@ -68,7 +68,7 @@ describe('AuthController (integration, PrismaService mocked — no live DB requi
 
       await request(app.getHttpServer())
         .post('/auth/register')
-        .send({ email: 'taken@example.com', password: 'password123', role: UserRole.CANDIDATE })
+        .send({ email: 'taken@example.com', password: 'password123', firstName: 'Jane', lastName: 'Doe', role: UserRole.CANDIDATE })
         .expect(409);
     });
 

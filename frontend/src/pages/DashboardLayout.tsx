@@ -43,6 +43,9 @@ function DashboardLayout() {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const authRole = useAuthStore((s) => s.role);
+  const firstName = useAuthStore((s) => s.firstName);
+  const lastName = useAuthStore((s) => s.lastName);
+  const fullName = [firstName, lastName].filter(Boolean).join(' ');
   const [darkMode, setDarkMode] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const { notifications, connectionError } = useSocket();
@@ -104,7 +107,7 @@ function DashboardLayout() {
                       className={({ isActive }) =>
                         `flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
                           darkMode ? 'hover:bg-slate-800' : 'hover:bg-white'
-                        } ${isActive ? 'bg-brand-600 text-white' : 'text-slate-600 dark:text-slate-300'}`
+                        } ${isActive ? 'bg-brand-600 text-white' : darkMode ? 'text-slate-300' : 'text-slate-600'}`
                       }
                     >
                       <span className="flex items-center gap-3">
@@ -123,8 +126,8 @@ function DashboardLayout() {
                     <Users size={18} />
                   </div>
                   <div>
-                    <p className="font-semibold">{authRole ? authRole.toLowerCase().replace(/_/g, ' ') : 'Team member'}</p>
-                    <p className={`text-sm ${mutedClass}`}>Operations Lead</p>
+                    <p className="font-semibold">{fullName || 'Team member'}</p>
+                    <p className={`text-sm ${mutedClass}`}>{authRole ? authRole.toLowerCase().replace(/_/g, ' ') : ''}</p>
                   </div>
                 </div>
                 <div className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm ${darkMode ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-700'}`}>
@@ -138,7 +141,7 @@ function DashboardLayout() {
               <header className={`flex flex-col gap-4 rounded-2xl border px-4 py-4 sm:px-6 ${headerClass}`}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <p className={`text-sm font-medium ${accentClass}`}>Welcome back</p>
+                    <p className={`text-sm font-medium ${accentClass}`}>Welcome back{firstName ? `, ${firstName}` : ''}</p>
                     <h1 className="text-2xl font-semibold">TalentBridge workspace</h1>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

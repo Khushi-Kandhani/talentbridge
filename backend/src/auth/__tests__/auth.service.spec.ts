@@ -37,12 +37,12 @@ describe('AuthService', () => {
     it('creates a new user and returns tokens when the email is not taken', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
       bcryptMock.hash.mockResolvedValue('hashed-password' as never);
-      prisma.user.create.mockResolvedValue({ id: 'u1', email: 'a@x.com', role: 'CANDIDATE' });
+      prisma.user.create.mockResolvedValue({ id: 'u1', email: 'a@x.com', firstName: 'Jane', lastName: 'Doe', role: 'CANDIDATE' });
 
-      const result = await service.register({ email: 'a@x.com', password: 'password123', role: 'CANDIDATE' } as any);
+      const result = await service.register({ email: 'a@x.com', password: 'password123', firstName: 'Jane', lastName: 'Doe', role: 'CANDIDATE' } as any);
 
       expect(prisma.user.create).toHaveBeenCalledWith({
-        data: { email: 'a@x.com', passwordHash: 'hashed-password', role: 'CANDIDATE' },
+        data: { email: 'a@x.com', passwordHash: 'hashed-password', firstName: 'Jane', lastName: 'Doe', role: 'CANDIDATE' },
       });
       expect(result).toEqual({ accessToken: 'access-token', refreshToken: 'refresh-token' });
       expect(prisma.user.update).toHaveBeenCalledWith({
@@ -55,7 +55,7 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue({ id: 'existing' });
 
       await expect(
-        service.register({ email: 'a@x.com', password: 'password123', role: 'CANDIDATE' } as any),
+        service.register({ email: 'a@x.com', password: 'password123', firstName: 'Jane', lastName: 'Doe', role: 'CANDIDATE' } as any),
       ).rejects.toThrow(ConflictException);
       expect(prisma.user.create).not.toHaveBeenCalled();
     });

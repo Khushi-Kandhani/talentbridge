@@ -18,21 +18,21 @@ describe('UsersService', () => {
 
   describe('create', () => {
     it('creates a user with the given email, passwordHash, and role', async () => {
-      prisma.user.create.mockResolvedValue({ id: 'u1', email: 'a@x.com', role: 'RECRUITER' });
+      prisma.user.create.mockResolvedValue({ id: 'u1', email: 'a@x.com', firstName: 'Jane', lastName: 'Doe', role: 'RECRUITER' });
 
-      const result = await service.create({ email: 'a@x.com', passwordHash: 'already-hashed', role: 'RECRUITER' } as any);
+      const result = await service.create({ email: 'a@x.com', passwordHash: 'already-hashed', firstName: 'Jane', lastName: 'Doe', role: 'RECRUITER' } as any);
 
       expect(prisma.user.create).toHaveBeenCalledWith({
-        data: { email: 'a@x.com', passwordHash: 'already-hashed', role: 'RECRUITER' },
+        data: { email: 'a@x.com', passwordHash: 'already-hashed', firstName: 'Jane', lastName: 'Doe', role: 'RECRUITER' },
       });
-      expect(result).toEqual({ id: 'u1', email: 'a@x.com', role: 'RECRUITER' });
+      expect(result).toEqual({ id: 'u1', email: 'a@x.com', firstName: 'Jane', lastName: 'Doe', role: 'RECRUITER' });
     });
   });
 
   describe('list', () => {
     it('returns users without passwordHash or refreshTokenHash', async () => {
       prisma.user.findMany.mockResolvedValue([
-        { id: 'u1', email: 'a@x.com', role: 'CANDIDATE', createdAt: new Date(), updatedAt: new Date() },
+        { id: 'u1', email: 'a@x.com', firstName: 'Jane', lastName: 'Doe', role: 'CANDIDATE', createdAt: new Date(), updatedAt: new Date() },
       ]);
 
       const result = await service.list();
@@ -41,6 +41,8 @@ describe('UsersService', () => {
         select: {
           id: true,
           email: true,
+          firstName: true,
+          lastName: true,
           role: true,
           createdAt: true,
           updatedAt: true,
@@ -53,8 +55,8 @@ describe('UsersService', () => {
 
   describe('updateRole', () => {
     it('updates the role and returns the user without sensitive fields', async () => {
-      prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@x.com', role: 'CANDIDATE' });
-      prisma.user.update.mockResolvedValue({ id: 'u1', email: 'a@x.com', role: 'RECRUITER', createdAt: new Date(), updatedAt: new Date() });
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@x.com', firstName: 'Jane', lastName: 'Doe', role: 'CANDIDATE' });
+      prisma.user.update.mockResolvedValue({ id: 'u1', email: 'a@x.com', firstName: 'Jane', lastName: 'Doe', role: 'RECRUITER', createdAt: new Date(), updatedAt: new Date() });
 
       const result = await service.updateRole('u1', 'RECRUITER' as any, 'requester-admin-1');
 
@@ -64,6 +66,8 @@ describe('UsersService', () => {
         select: {
           id: true,
           email: true,
+          firstName: true,
+          lastName: true,
           role: true,
           createdAt: true,
           updatedAt: true,

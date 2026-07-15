@@ -17,7 +17,7 @@ describe('AnalyticsController (integration, PrismaService mocked)', () => {
     process.env.JWT_REFRESH_SECRET = 'test-refresh-secret';
 
     prisma = {
-      application: { count: jest.fn(), findMany: jest.fn() },
+      application: { count: jest.fn(), findMany: jest.fn(), groupBy: jest.fn() },
       jobPosting: { count: jest.fn() },
       interview: { count: jest.fn() },
       offer: { findMany: jest.fn() },
@@ -53,7 +53,12 @@ describe('AnalyticsController (integration, PrismaService mocked)', () => {
     prisma.jobPosting.count.mockResolvedValue(3);
     prisma.interview.count.mockResolvedValue(4);
     prisma.offer.findMany.mockResolvedValue([]);
-    prisma.application.findMany.mockResolvedValue([]);
+    // One HIRED application: createdAt to updatedAt spans exactly 14 days,
+    // matching this test's timeToHireDays assertion below.
+    prisma.application.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-01-01T00:00:00Z'), updatedAt: new Date('2026-01-15T00:00:00Z') },
+    ]);
+    prisma.application.groupBy.mockResolvedValue([]);
 
     const token = tokenFor(UserRole.RECRUITER);
     const res = await request(app.getHttpServer())
