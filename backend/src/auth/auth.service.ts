@@ -13,7 +13,13 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  private async getTokens(userId: string, email: string, role: string) {
+  private async getTokens(
+    userId: string,
+    email: string,
+    role: string,
+    firstName: string,
+    lastName: string,
+  ) {
     const accessOptions: JwtSignOptions = {
       secret: process.env.JWT_SECRET,
       expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
@@ -23,9 +29,11 @@ export class AuthService {
       expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '7d') as any,
     };
 
+    const payload = { sub: userId, email, role, firstName, lastName };
+
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync({ sub: userId, email, role }, accessOptions),
-      this.jwtService.signAsync({ sub: userId, email, role }, refreshOptions),
+      this.jwtService.signAsync(payload, accessOptions),
+      this.jwtService.signAsync(payload, refreshOptions),
     ]);
     return { accessToken, refreshToken };
   }
@@ -44,10 +52,16 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
-      data: { email: dto.email, passwordHash, role: dto.role || UserRole.CANDIDATE },
+      data: {
+        email: dto.email,
+        passwordHash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        role: dto.role || UserRole.CANDIDATE,
+      },
     });
 
-    const tokens = await this.getTokens(user.id, user.email, user.role);
+    const tokens = await this.getTokens(user.id, user.email, user.role, user.firstName, user.lastName);
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
     return tokens;
   }
@@ -59,7 +73,7 @@ export class AuthService {
     const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordMatches) throw new UnauthorizedException('Invalid credentials');
 
-    const tokens = await this.getTokens(user.id, user.email, user.role);
+    const tokens = await this.getTokens(user.id, user.email, user.role, user.firstName, user.lastName);
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
     return tokens;
   }
@@ -71,7 +85,7 @@ export class AuthService {
     const matches = await bcrypt.compare(refreshToken, user.refreshTokenHash);
     if (!matches) throw new UnauthorizedException('Access denied');
 
-    const tokens = await this.getTokens(user.id, user.email, user.role);
+    const tokens = await this.getTokens(user.id, user.email, user.role, user.firstName, user.lastName);
     await this.updateRefreshTokenHash(user.id, tokens.refreshToken);
     return tokens;
   }

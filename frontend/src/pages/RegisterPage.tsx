@@ -4,12 +4,11 @@ import { UserPlus } from 'lucide-react';
 import api from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 
-const roles = ['CANDIDATE', 'RECRUITER', 'HIRING_MANAGER', 'ADMIN'];
-
 export default function RegisterPage() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('CANDIDATE');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((s) => s.login);
@@ -20,7 +19,7 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.post('/auth/register', { email, password });
+      const res = await api.post('/auth/register', { firstName, lastName, email, password });
       login(res.data.accessToken, res.data.refreshToken);
       navigate('/dashboard');
     } catch (err: any) {
@@ -40,6 +39,30 @@ export default function RegisterPage() {
           <h1 className="text-xl font-semibold">Create your account</h1>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-sm font-medium text-slate-600">First name</label>
+              <input
+                type="text"
+                required
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-brand-500"
+                placeholder="Lionel"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-sm font-medium text-slate-600">Last name</label>
+              <input
+                type="text"
+                required
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 outline-none focus:border-brand-500"
+                placeholder="Messi"
+              />
+            </div>
+          </div>
           <div>
             <label className="text-sm font-medium text-slate-600">Email</label>
             <input

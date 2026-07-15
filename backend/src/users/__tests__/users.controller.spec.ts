@@ -85,7 +85,7 @@ describe('UsersController (integration, PrismaService mocked — no live DB requ
     it('rejects an unauthenticated request with 401', async () => {
       await request(app.getHttpServer())
         .post('/users')
-        .send({ email: 'a@x.com', passwordHash: 'hashed-password-value', role: UserRole.CANDIDATE })
+        .send({ email: 'a@x.com', passwordHash: 'hashed-password-value', firstName: 'Jane', lastName: 'Doe', role: UserRole.CANDIDATE })
         .expect(401);
     });
 
@@ -93,17 +93,17 @@ describe('UsersController (integration, PrismaService mocked — no live DB requ
       await request(app.getHttpServer())
         .post('/users')
         .set('Authorization', `Bearer ${tokenFor(UserRole.RECRUITER)}`)
-        .send({ email: 'a@x.com', passwordHash: 'hashed-password-value', role: UserRole.CANDIDATE })
+        .send({ email: 'a@x.com', passwordHash: 'hashed-password-value', firstName: 'Jane', lastName: 'Doe', role: UserRole.CANDIDATE })
         .expect(403);
     });
 
     it('allows an ADMIN to create a user', async () => {
-      prisma.user.create.mockResolvedValue({ id: 'u2', email: 'new@x.com', role: UserRole.RECRUITER });
+      prisma.user.create.mockResolvedValue({ id: 'u2', email: 'new@x.com', firstName: 'Jane', lastName: 'Doe', role: UserRole.RECRUITER });
 
       const res = await request(app.getHttpServer())
         .post('/users')
         .set('Authorization', `Bearer ${tokenFor(UserRole.ADMIN)}`)
-        .send({ email: 'new@x.com', passwordHash: 'hashed-password-value', role: UserRole.RECRUITER })
+        .send({ email: 'new@x.com', passwordHash: 'hashed-password-value', firstName: 'Jane', lastName: 'Doe', role: UserRole.RECRUITER })
         .expect(201);
 
       expect(res.body.email).toBe('new@x.com');
